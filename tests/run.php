@@ -632,6 +632,57 @@ $test('financial overview HTTP resource succeeds and reuses safe failure mapping
     foreach (['Northstar', 'Heritage', 'SOAP', 'HC-'] as $term) $assert(!str_contains($temporary->body . $malformed->body, $term));
 });
 
+$test('chapter 10 schema declares tables keys and foreign keys', function () use ($assert): void {
+    $pdo=\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__));
+    $tables=$pdo->query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+    $assert($tables === ['account_activity','accounts','members']);
+    $assert($pdo->query("PRAGMA foreign_key_list(accounts)")->fetch()['table']==='members');
+    $assert($pdo->query("PRAGMA foreign_key_list(account_activity)")->fetch()['table']==='accounts');
+});
+
+$test('SQL fixtures and mappings are deterministic Harbor values', function () use ($assert): void {
+    $repo=new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository(\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__)));
+    $members=$repo->members(); $accounts=$repo->accountsFor(new MemberId('member-0001'));
+    $assert(array_map(fn($m)=>$m->id->value,$members)===['member-0001','member-0002','member-0003']);
+    $assert($members[0]->status===MembershipStatus::ACTIVE && $members[0]->createdAt->format('c')==='2024-01-10T09:00:00+00:00');
+    $assert(array_map(fn($a)=>$a->id->value,$accounts)===['account-0001','account-0002']);
+    $assert($accounts[0]->type===AccountType::CHECKING && $accounts[0]->status===AccountStatus::OPEN);
+    $assert($repo->accountsFor(new MemberId('member-9999'))===[]);
+});
+
+$test('recent activity grouping and integer aggregation are correct', function () use ($assert): void {
+    $repo=new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository(\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__)));
+    $recent=$repo->activitySince(new AccountId('account-0001'),new DateTimeImmutable('2025-07-19T14:30:00Z'));
+    $assert(array_map(fn($a)=>$a->id,$recent)===['activity-0002','activity-0003']);
+    $latest=$repo->mostRecentActivityByAccount(); $assert($latest['account-0001']->format('c')==='2026-01-05T15:30:00+00:00' && $latest['account-0004']===null);
+    $assert($repo->totalActivityAmount(new AccountId('account-0001'))->minorUnits===55785);
+});
+
+$test('NOT EXISTS answers inactivity while old-row pitfall does not', function () use ($assert): void {
+    $repo=new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository(\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__)));
+    $cutoff=new DateTimeImmutable('2025-07-19T14:30:00Z');
+    $correct=array_map(fn($m)=>$m->id->value,$repo->inactiveMembers($cutoff));
+    $assert($correct===['member-0002','member-0003']);
+    $assert($repo->incorrectInactiveMemberIds($cutoff)===['member-0001','member-0002']);
+    $changed=array_map(fn($m)=>$m->id->value,$repo->inactiveMembers(new DateTimeImmutable('2026-01-10T00:00:00Z')));
+    $assert($changed===['member-0001','member-0002','member-0003']);
+});
+
+$test('SQL parameters resist malicious identifiers and stored enums fail clearly', function () use ($assert): void {
+    $pdo=\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__)); $repo=new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository($pdo);
+    $assert($repo->accountsFor(new MemberId("member-0001' OR 1=1 --"))===[]);
+    $assert((int)$pdo->query('SELECT COUNT(*) FROM accounts')->fetchColumn()===4);
+    $pdo->exec("UPDATE members SET membership_status='CORRUPT' WHERE member_id='member-0001'");
+    try{$repo->members();$assert(false);}catch(UnexpectedValueException $e){$assert(str_contains($e->getMessage(),'CORRUPT'));}
+});
+
+$test('inactive member service exposes a Harbor port and Harbor results', function () use ($assert): void {
+    $pdo=\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__)); $repo=new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository($pdo);
+    $service=new \Harbor\DigitalBankingLab\Application\FindInactiveMembers($repo); $result=$service->execute(new DateTimeImmutable('2025-07-19T14:30:00Z'));
+    $assert($repo instanceof \Harbor\DigitalBankingLab\Application\MemberActivityRepository && $result[0] instanceof \Harbor\DigitalBankingLab\Application\InactiveMemberSummary);
+    $reflection=new ReflectionClass($service); $assert(!$reflection->hasProperty('pdo'));
+});
+
 $failures = 0;
 foreach ($tests as $name => $body) {
     try { $body(); echo "PASS {$name}\n"; }
