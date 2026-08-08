@@ -36,7 +36,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 7: Integration Adapters as a Reusable Pattern](chapters/07-integration-adapters.md) makes Harbor-owned ports, vendor adapters, vendor clients, transport placement, dependency inversion, composition, and architecture checks explicit without forcing unrelated capabilities into one interface. See the [integration adapter pattern diagram](diagrams/integration-adapter-pattern.md).
 
-The progression is deliberate: Chapter 0 maps the **system landscape**; Chapter 1 supplies a **deterministic laboratory**; Chapter 2 defines the **Harbor domain**; Chapter 3 establishes the **first vendor boundary**; Chapter 4 defines the **Harbor REST API**; Chapter 5 adds **vendor REST transport**; Chapter 6 adds **legacy SOAP integration**; and Chapter 7 extracts the **reusable adapter architecture**. Harbor can compare two different integrations using common architecture vocabulary without pretending they provide the same capability.
+[Chapter 8: Handling Vendor Failures Safely](chapters/08-vendor-failure-handling.md) unifies REST and SOAP failures behind Harbor-owned categories, explicit retry dispositions, safe public mappings, and deterministic operator diagnostics—without implementing retries. See the [vendor failure handling diagram](diagrams/vendor-failure-handling.md).
+
+The progression is deliberate: Chapter 0 maps the **system landscape**; Chapter 1 supplies a **deterministic laboratory**; Chapter 2 defines the **Harbor domain**; Chapter 3 establishes the **vendor boundary**; Chapter 4 defines the **Harbor REST API**; Chapter 5 adds **vendor REST transport**; Chapter 6 adds **legacy SOAP integration**; Chapter 7 extracts **reusable adapters**; and Chapter 8 adds **unified failure handling**.
 
 ## Requirements and installation
 
@@ -132,6 +134,14 @@ Inspect Chapter 7's deterministic integration catalog, individual architectural 
 ./bin/digital-banking-lab architecture-check
 ```
 
+Inspect one Chapter 8 operator diagnostic or the complete deterministic failure matrix:
+
+```bash
+./bin/digital-banking-lab failure northstar-timeout
+./bin/digital-banking-lab failure heritage-malformed-xml
+./bin/digital-banking-lab failure-matrix
+```
+
 Start the Chapter 4 local API, then request success and representative errors from another terminal:
 
 ```bash
@@ -163,11 +173,11 @@ src/Application/ Use cases and output rendering
 tests/        Dependency-free executable architecture tests
 ```
 
-Future chapters will extend these same boundaries rather than replacing them. Chapter 8 asks: **What happens when external systems fail, slow down, return malformed data, or become temporarily unavailable?** It is not implemented here.
+Future chapters will extend these same boundaries rather than replacing them. Chapter 9 focuses on **PHP application services and orchestration across multiple integration capabilities**.
 
 ## Roadmap
 
-Chapters 0 through 7 are implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0 through 8 are implemented. The remaining entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -177,7 +187,7 @@ Chapters 0 through 7 are implemented. The remaining entries describe direction, 
 6. **Consuming vendor REST APIs** — deterministic vendor API clients (Chapter 5 — implemented)
 7. **SOAP and legacy banking integrations** — envelopes, contracts, and translation (Chapter 6 — implemented)
 8. **Integration adapters** — reusable Harbor ports, vendor adapters, clients, and composition (Chapter 7 — implemented)
-9. **Vendor failure handling** — timeouts, retries, idempotency, and safe degradation
+9. **Vendor failure handling** — classification, containment, retry disposition, and safe translation (Chapter 8 — implemented)
 10. **PHP application services** — orchestrate domain work and integrations
 11. **SQL for digital banking** — MySQL-oriented schemas and queries
 12. **Data-driven development** — measurements, hypotheses, and responsible analytics

@@ -23,10 +23,21 @@ use Harbor\DigitalBankingLab\Architecture\ArchitectureInspector;
 use Harbor\DigitalBankingLab\Application\{IntegrationCatalog, IntegrationCatalogRenderer};
 use Harbor\DigitalBankingLab\Infrastructure\Soap\DeterministicHeritageSoapTransport;
 use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, HeritageIdentityMap, HeritageSoapClient, HeritageSoapEnvelopeBuilder};
+use Harbor\DigitalBankingLab\Application\{FailureMatrixRenderer, FailureScenarioLaboratory, IntegrationFailureReport};
+use Harbor\DigitalBankingLab\Composition\LaboratoryApplicationFactory;
 
 $command = $argv[1] ?? null;
 $renderer = new EcosystemRenderer();
 $ecosystem = HarborEcosystemFixture::create();
+
+if (in_array($command, ['failure', 'failure-matrix'], true)) {
+    $failures = new FailureScenarioLaboratory(new LaboratoryApplicationFactory(dirname(__DIR__)));
+    if ($command === 'failure-matrix') { echo (new FailureMatrixRenderer())->render($failures); exit(0); }
+    $scenario = $argv[2] ?? null;
+    if ($scenario === null) { fwrite(STDERR, "A failure scenario is required.\n"); exit(1); }
+    try { echo (new IntegrationFailureReport())->render($scenario, $failures->run($scenario)); exit(0); }
+    catch (InvalidArgumentException $error) { fwrite(STDERR, $error->getMessage() . "\n"); exit(1); }
+}
 
 if ($command === 'integrations') {
     echo (new IntegrationCatalogRenderer())->catalog(new IntegrationCatalog());
@@ -182,5 +193,5 @@ if ($command === 'laboratory' || $command === 'determinism') {
     }
 }
 
-fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID|core-account ACCOUNT_ID [--scenario=SCENARIO]|soap-request ACCOUNT_ID|integration-styles|integrations|integration ID|architecture-check>\n");
+fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID|core-account ACCOUNT_ID [--scenario=SCENARIO]|soap-request ACCOUNT_ID|integration-styles|integrations|integration ID|architecture-check|failure SCENARIO|failure-matrix>\n");
 exit(1);
