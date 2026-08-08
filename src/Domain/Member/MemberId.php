@@ -8,9 +8,7 @@ final readonly class MemberId
 {
     public function __construct(public string $value)
     {
-        if ($value === '') {
-            throw new \InvalidArgumentException('Member ID must not be empty.');
-        }
+        if (preg_match('/\Amember-[0-9]{4}\z/D', $value) !== 1) throw new \InvalidArgumentException('Member ID must use the Harbor member-0000 format.');
     }
 
     public function equals(self $other): bool

@@ -39,6 +39,7 @@ final readonly class NorthstarRestClient implements NorthstarClient
     private function decodeCustomer(array $data): NorthstarCustomer
     {
         $this->requireShape($data, ['customerKey' => 'string', 'customerStatus' => 'string', 'fullName' => 'string', 'products' => 'array'], 'customer');
+        if (count($data['products']) > 100) throw new NorthstarResponseDecodingFailure('Northstar customer contains too many products.');
         $products = [];
         foreach ($data['products'] as $index => $product) {
             if (!is_array($product)) throw new NorthstarResponseDecodingFailure("Northstar product {$index} must be an object.");

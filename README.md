@@ -52,7 +52,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 15: Integrating a Third-Party Fintech Service](chapters/15-third-party-fintech-integration.md) composes fictional ClearVerify member verification into transfer preview through a Harbor-owned port, explicit identity/status translation, contained failures, and a provider-independent API and UX. See the [third-party fintech integration diagram](diagrams/third-party-fintech-integration.md).
 
-The progression is deliberate: Chapter 14 lets Harbor accept a validated self-service request; Chapter 15 composes an external fintech capability into that workflow while Harbor retains its domain, API, policy, and member experience. Chapter 16 will focus on **secure input validation and trust boundaries**; it is not implemented here.
+[Chapter 16: Secure Input Validation and Trust Boundaries](chapters/16-secure-input-validation.md) makes browser, vendor, legacy, database, presentation, and configuration trust boundaries explicit. It adds layered request checks, bounded safe XML parsing, sensitivity metadata, output-safety regressions, and deterministic security teaching commands. See the [trust-boundary diagram](diagrams/trust-boundaries.md).
+
+The progression is deliberate: Chapter 14 accepts a validated self-service request, Chapter 15 composes an external fintech capability, and Chapter 16 demonstrates that every external boundary remains untrusted until validated. Chapter 17 will focus on **protecting sensitive member and financial data across application layers**; it is not implemented here.
 
 ## Requirements and installation
 
@@ -244,7 +246,7 @@ curl -i -X POST http://127.0.0.1:8080/api/members/member-0001/transfer-preview \
 
 ## Roadmap
 
-Chapters 0 through 14 are implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0 through 16 are implemented. Later entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -261,9 +263,9 @@ Chapters 0 through 14 are implemented. The remaining entries describe direction,
 13. **Member Web** — Harbor API consumption with HTML, CSS, and TypeScript (Chapter 12 — implemented)
 14. **Frontend request state, resilience, and API consumption patterns** — Chapter 13 — implemented
 15. **Digital self-service workflows and form validation** — Chapter 14 — implemented
-16. **Third-party fintech integration** — capability and risk evaluation
-17. **Secure input validation** — trust boundaries and defensive handling
-18. **Protecting financial data** — minimization, masking, and safe logging
+16. **Third-party fintech integration** — capability and risk evaluation (Chapter 15 — implemented)
+17. **Secure input validation** — trust boundaries and defensive handling (Chapter 16 — implemented)
+18. **Protecting financial data** — minimization, masking, and safe logging (Chapter 17 — next)
 19. **Unit testing** — fast tests around domain and application behavior
 20. **Integration testing** — deterministic tests at system boundaries
 21. **Full-stack debugging** — trace failures across browser, services, and adapters
@@ -274,6 +276,18 @@ Chapters 0 through 14 are implemented. The remaining entries describe direction,
 ## Safety and scope
 
 Never put real member information or credentials in this repository. All institutions, people, APIs, responses, and transactions in the laboratory must be fictional or deterministic simulations. Examples are educational and are not production security, compliance, legal, or architecture guidance.
+
+### Security scope
+
+This repository demonstrates secure coding concepts. It is not a production banking security baseline, compliance certification, penetration test, or threat-model substitute. Chapter 16 deliberately does not add authentication, authorization, real secret management, or encryption infrastructure.
+
+```bash
+./bin/digital-banking-lab trust-boundaries
+./bin/digital-banking-lab validation-path transfer-preview
+./bin/digital-banking-lab security-check
+```
+
+For transfer-preview requests, `400` identifies malformed JSON/shape, `413` an over-64-KiB body, `415` a non-JSON content type, and `422` syntactically valid input with invalid field values.
 
 ### Chapter 15 verification laboratory
 

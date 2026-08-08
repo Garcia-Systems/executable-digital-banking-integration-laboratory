@@ -14,6 +14,8 @@ final readonly class HeritageSoapClient
     {
         $response = $this->transport->send($this->endpoint, 'urn:heritage-core/GetAccountDetails', $this->envelopes->getAccountDetails($account));
         if ($response->statusCode < 200 || $response->statusCode >= 300) throw new HeritageTransportFailure("Heritage transport returned HTTP {$response->statusCode}.");
+        if (strlen($response->xmlBody) > 262_144) throw new HeritageResponseDecodingFailure('Heritage response exceeds the 256 KiB limit.');
+        if (preg_match('/<!DOCTYPE|<!ENTITY/i', $response->xmlBody) === 1) throw new HeritageResponseDecodingFailure('Heritage response contains a prohibited XML declaration.');
         $previous = libxml_use_internal_errors(true);
         $document = new \DOMDocument();
         $loaded = $document->loadXML($response->xmlBody, LIBXML_NONET);

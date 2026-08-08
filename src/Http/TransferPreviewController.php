@@ -39,7 +39,10 @@ final readonly class TransferPreviewController
     private function validate(array $body): array
     {
         $errors=[];
-        foreach (['sourceAccountId','destinationAccountId'] as $field) if (!isset($body[$field]) || !is_string($body[$field]) || $body[$field] === '') $errors[$field][] = $field === 'sourceAccountId' ? 'Source account is required.' : 'Destination account is required.';
+        foreach (['sourceAccountId','destinationAccountId'] as $field) {
+            if (!isset($body[$field]) || !is_string($body[$field]) || $body[$field] === '') $errors[$field][] = $field === 'sourceAccountId' ? 'Source account is required.' : 'Destination account is required.';
+            elseif (!$this->validAccountId($body[$field])) $errors[$field][] = 'Account identifier is invalid.';
+        }
         if (!isset($body['amount']) || !is_array($body['amount']) || array_is_list($body['amount'])) $errors['amount'][] = 'Amount must be an object.';
         else {
             if (($body['amount']['currency'] ?? null) !== 'USD') $errors['amount.currency'][] = 'Amount currency must be USD.';
@@ -50,6 +53,8 @@ final readonly class TransferPreviewController
         elseif (is_string($body['memo'] ?? null) && strlen($body['memo']) > 140) $errors['memo'][] = 'Memo must be 140 characters or fewer.';
         return $errors;
     }
+
+    private function validAccountId(string $value): bool { try { new AccountId($value); return true; } catch (\InvalidArgumentException) { return false; } }
 
     /** @param array<string,list<string>> $fields */
     private function validation(array $fields): Response { return Response::json(422, ['error'=>['code'=>'validation_failed','message'=>'The request contains invalid fields.','fields'=>$fields]]); }

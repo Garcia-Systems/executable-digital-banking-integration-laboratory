@@ -25,6 +25,13 @@ describe('member rendering', () => {
     const markup = render({ kind: 'loaded', member: memberFixture, ...metadata }).root.innerHTML.toLowerCase();
     expect(markup).not.toMatch(/northstar|heritage|customerkey|productkey|soap|https?:\/\//);
   });
+  it('renders HTML-looking member and account text literally', () => {
+    const hostile={...memberFixture,name:'<b>Avery</b>',accounts:[{...memberFixture.accounts[0],displayName:'<img src=x onerror=alert(1)>'}]};
+    const {root}=render({kind:'loaded',member:hostile,...metadata});
+    expect(root.textContent).toContain('<b>Avery</b>');
+    expect(root.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(root.querySelector('b')).toBeNull(); expect(root.querySelector('img')).toBeNull();
+  });
   it('renders an intentional account-empty state without implying a missing member', () => {
     const { root } = render({ kind: 'empty', member: { ...memberFixture, accounts: [] }, ...metadata });
     expect(root.textContent).toContain('don’t have any accounts available');

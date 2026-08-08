@@ -449,8 +449,8 @@ $test('GetAccountBalanceDetails depends only on a Harbor-owned gateway', functio
     $gateway = new class implements AccountBalanceGateway {
         public function accountBalanceDetails(AccountId $id): AccountBalanceDetails { return new AccountBalanceDetails($id, Money::usd(1), Money::usd(1), AccountStatus::CLOSED); }
     };
-    $details = (new GetAccountBalanceDetails($gateway))->execute(new AccountId('account-test'));
-    $assert($details->accountId->value === 'account-test' && $details->ledgerBalance->minorUnits === 1);
+    $details = (new GetAccountBalanceDetails($gateway))->execute(new AccountId('account-9999'));
+    $assert($details->accountId->value === 'account-9999' && $details->ledgerBalance->minorUnits === 1);
 });
 
 $test('Harbor domain and application source do not depend on Heritage SOAP or XML', function () use ($assert): void {
@@ -670,7 +670,7 @@ $test('NOT EXISTS answers inactivity while old-row pitfall does not', function (
 
 $test('SQL parameters resist malicious identifiers and stored enums fail clearly', function () use ($assert): void {
     $pdo=\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__)); $repo=new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository($pdo);
-    $assert($repo->accountsFor(new MemberId("member-0001' OR 1=1 --"))===[]);
+    try{new MemberId("member-0001' OR 1=1 --");$assert(false);}catch(InvalidArgumentException){}
     $assert((int)$pdo->query('SELECT COUNT(*) FROM accounts')->fetchColumn()===4);
     $pdo->exec("UPDATE members SET membership_status='CORRUPT' WHERE member_id='member-0001'");
     try{$repo->members();$assert(false);}catch(UnexpectedValueException $e){$assert(str_contains($e->getMessage(),'CORRUPT'));}
@@ -800,6 +800,35 @@ $test('verification API and transfer policy expose only Harbor outcomes',functio
     $assert($review->status===409&&str_contains($review->body,'verification_review_required'));
     $assert($failed->status===409&&str_contains($failed->body,'member_verification_required'));
     $assert($timeout->status===504&&!str_contains($timeout->body,'CLEARVERIFY'));
+});
+
+$test('Chapter 16 request boundary rejects media, size, and malformed identifiers early',function()use($assert):void{
+    $router=HttpKernelFactory::create();$body='{"sourceAccountId":"account-0001","destinationAccountId":"account-0002","amount":{"currency":"USD","minorUnits":1}}';
+    $assert($router->dispatch('POST','/api/members/member-0001/transfer-preview',$body,['Content-Type'=>'text/plain'])->status===415);
+    $assert($router->dispatch('POST','/api/members/member-0001/transfer-preview',str_repeat('x',65537))->status===413);
+    $assert($router->dispatch('POST','/api/members/../../etc/passwd/transfer-preview',$body)->status===404);
+    $bad=$router->dispatch('POST','/api/members/member-0001/transfer-preview',str_replace('account-0001','account-0001; DROP TABLE accounts; --',$body));
+    $assert($bad->status===422);
+    $memo=json_encode(['sourceAccountId'=>'account-0001','destinationAccountId'=>'account-0002','amount'=>['currency'=>'USD','minorUnits'=>1],'memo'=>'<script>alert(1)</script>'],JSON_THROW_ON_ERROR);
+    $accepted=$router->dispatch('POST','/api/members/member-0001/transfer-preview',$memo);$assert($accepted->status===200&&str_contains($accepted->body,'<script>alert(1)</script>'));
+});
+
+$test('Chapter 16 identifiers and public responses reject injection-shaped input',function()use($assert):void{
+    foreach(["member-0001' OR '1'='1",'../../etc/passwd',' ','member-0001<script>',str_repeat('m',200)] as $value)try{new MemberId($value);$assert(false);}catch(InvalidArgumentException){}
+    foreach(["account-0001; DROP TABLE accounts; --",' ',str_repeat('a',200)] as $value)try{new AccountId($value);$assert(false);}catch(InvalidArgumentException){}
+    $response=HttpKernelFactory::create()->dispatch('GET','/api/members/member-0001');
+    foreach(['northstar','heritage','clearverify','FAKE_TOKEN','/workspace/','SELECT '] as $term)$assert(!str_contains(strtolower($response->body),strtolower($term)));
+    $assert(($response->headers['X-Content-Type-Options']??null)==='nosniff');
+});
+
+$test('Chapter 16 Heritage rejects declarations before XML parsing',function()use($assert):void{
+    $transport=new class implements \Harbor\DigitalBankingLab\Infrastructure\Soap\SoapTransport {public function send(string $endpoint,string $soapAction,string $xmlBody):\Harbor\DigitalBankingLab\Infrastructure\Soap\SoapTransportResponse{return new \Harbor\DigitalBankingLab\Infrastructure\Soap\SoapTransportResponse(200,'<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]><x>&e;</x>');}};
+    $client=new \Harbor\DigitalBankingLab\Integration\Heritage\HeritageSoapClient($transport,new \Harbor\DigitalBankingLab\Integration\Heritage\HeritageSoapEnvelopeBuilder(),'https://heritage.invalid');
+    try{$client->getAccountDetails(new \Harbor\DigitalBankingLab\Integration\Heritage\Model\HeritageAccountNumber('H-1001'));$assert(false);}catch(\Harbor\DigitalBankingLab\Integration\Heritage\Exception\HeritageResponseDecodingFailure $error){$assert(str_contains($error->getMessage(),'prohibited'));}
+});
+
+$test('Chapter 16 trust-boundary metadata is deterministic',function()use($assert):void{
+    $catalog=new \Harbor\DigitalBankingLab\Security\TrustBoundaryCatalog();$assert(count($catalog->all())===7);$assert($catalog->render()===$catalog->render());
 });
 
 $failures = 0;
