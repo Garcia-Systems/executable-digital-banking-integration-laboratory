@@ -1,0 +1,15 @@
+{
+  "name": "harbor-community-credit-union/digital-banking-integration-laboratory",
+  "description": "An executable textbook for safe, vendor-centered digital banking integrations.",
+  "type": "project",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {"Harbor\\DigitalBankingLab\\": "src/"}
+  },
+  "scripts": {
+    "test": "php tests/run.php"
+  },
+  "require": {
+    "php": ">=8.2"
+  }
+}

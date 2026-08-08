@@ -1,0 +1,25 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require dirname(__DIR__) . '/bootstrap.php';
+
+use Harbor\DigitalBankingLab\Application\EcosystemRenderer;
+use Harbor\DigitalBankingLab\Fixtures\HarborEcosystemFixture;
+
+$command = $argv[1] ?? null;
+$renderer = new EcosystemRenderer();
+$ecosystem = HarborEcosystemFixture::create();
+
+if ($command === 'ecosystem') {
+    echo $renderer->render($ecosystem);
+    exit(0);
+}
+if ($command === 'path') {
+    echo $renderer->renderMemberWebPath($ecosystem);
+    exit(0);
+}
+
+fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path>\n");
+exit(1);
