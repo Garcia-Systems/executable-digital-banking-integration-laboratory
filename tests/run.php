@@ -724,6 +724,52 @@ $test('activity profile API is intentional and preserves existing routes', funct
     $assert(HttpKernelFactory::create()->dispatch('GET','/api/members/member-0001')->status===200);
 });
 
+
+$test('Chapter 14 money subtraction and command preserve Harbor values', function () use ($assert): void {
+    $command=new \Harbor\DigitalBankingLab\Application\PreviewTransferCommand(new MemberId('member-0001'),new AccountId('account-0001'),new AccountId('account-0002'),Money::usd(50000),'Move to savings');
+    $assert($command->amount->minorUnits===50000 && $command->memo==='Move to savings');
+    $result=Money::usd(238575)->subtract(Money::usd(50000));
+    $assert($result->minorUnits===188575 && $result->currency==='USD');
+});
+
+$test('transfer preview application validates and never mutates balances', function () use ($assert): void {
+    $member=MemberFixtureFactory::create();
+    $digital=new class($member) implements DigitalBankingGateway { public int $calls=0; public function __construct(private Member $member){} public function findMember(MemberId $id):Member{$this->calls++;return $this->member;} };
+    $balances=new class implements AccountBalanceGateway { public int $calls=0; public function accountBalanceDetails(AccountId $id):AccountBalanceDetails{$this->calls++;return new AccountBalanceDetails($id,Money::usd(245075),Money::usd(238575),AccountStatus::OPEN);} };
+    $service=new \Harbor\DigitalBankingLab\Application\PreviewTransfer($digital,$balances,new SequenceIdGenerator('preview-'));
+    $command=new \Harbor\DigitalBankingLab\Application\PreviewTransferCommand($member->id,new AccountId('account-0001'),new AccountId('account-0002'),Money::usd(50000),'Move to savings');
+    $preview=$service->execute($command);
+    $assert($digital->calls===1 && $balances->calls===1 && $preview->previewId==='preview-0001');
+    $assert($preview->sourceAvailableBalance->minorUnits===238575 && $preview->projectedAvailableBalance->minorUnits===188575);
+    $assert($member->accounts[0]->balance->minorUnits===245075,'preview must not mutate the member balance');
+});
+
+$test('transfer preview endpoint validates shape rules and method', function () use ($assert): void {
+    $router=HttpKernelFactory::create();
+    $valid=json_encode(['sourceAccountId'=>'account-0001','destinationAccountId'=>'account-0002','amount'=>['currency'=>'USD','minorUnits'=>50000],'memo'=>'Move to savings'],JSON_THROW_ON_ERROR);
+    $response=$router->dispatch('POST','/api/members/member-0001/transfer-preview',$valid); $data=json_decode($response->body,true,flags:JSON_THROW_ON_ERROR);
+    $assert($response->status===200 && $data['previewId']==='preview-0001' && $data['amount']['minorUnits']===50000);
+    $assert($data['sourceAvailableBalance']['minorUnits']===238575 && $data['projectedAvailableBalance']['minorUnits']===188575);
+    $assert($router->dispatch('GET','/api/members/member-0001/transfer-preview')->status===405);
+    $assert($router->dispatch('POST','/api/members/member-0001/transfer-preview','{')->status===400);
+    $invalid=$router->dispatch('POST','/api/members/member-0001/transfer-preview',json_encode(['sourceAccountId'=>'account-0001','destinationAccountId'=>'account-0001','amount'=>['currency'=>'EUR','minorUnits'=>0]],JSON_THROW_ON_ERROR));
+    $payload=json_decode($invalid->body,true,flags:JSON_THROW_ON_ERROR);
+    $assert($invalid->status===422 && $payload['error']['code']==='validation_failed');
+    $assert(isset($payload['error']['fields']['amount.currency'],$payload['error']['fields']['amount.minorUnits']));
+});
+
+$test('transfer preview state validation and upstream failures remain safe', function () use ($assert): void {
+    $same=HttpKernelFactory::create()->dispatch('POST','/api/members/member-0001/transfer-preview',json_encode(['sourceAccountId'=>'account-0001','destinationAccountId'=>'account-0001','amount'=>['currency'=>'USD','minorUnits'=>1]],JSON_THROW_ON_ERROR));
+    $assert($same->status===422 && str_contains($same->body,'must be different'));
+    $tooMuch=HttpKernelFactory::create()->dispatch('POST','/api/members/member-0001/transfer-preview',json_encode(['sourceAccountId'=>'account-0001','destinationAccountId'=>'account-0002','amount'=>['currency'=>'USD','minorUnits'=>999999]],JSON_THROW_ON_ERROR));
+    $assert($tooMuch->status===422 && str_contains($tooMuch->body,'available balance'));
+    $body=json_encode(['sourceAccountId'=>'account-0001','destinationAccountId'=>'account-0002','amount'=>['currency'=>'USD','minorUnits'=>1]],JSON_THROW_ON_ERROR);
+    $timeout=HttpKernelFactory::create('vendor-timeout')->dispatch('POST','/api/members/member-0001/transfer-preview',$body);
+    $core=HttpKernelFactory::create('normal','temporary-unavailable')->dispatch('POST','/api/members/member-0001/transfer-preview',$body);
+    $assert($timeout->status===504 && $core->status===503);
+    $assert(!str_contains($timeout->body,'Northstar') && !str_contains($core->body,'Heritage'));
+});
+
 $failures = 0;
 foreach ($tests as $name => $body) {
     try { $body(); echo "PASS {$name}\n"; }

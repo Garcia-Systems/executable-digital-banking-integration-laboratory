@@ -25,3 +25,13 @@ button { min-height: 2.75rem; padding: .65rem 1.2rem; border: 0; border-radius: 
 button:focus-visible { outline: .2rem solid var(--navy); outline-offset: .2rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (min-width: 44rem) { .account-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.transfer { margin-top: 2rem; padding: 1.5rem; background: white; border-radius: .75rem; }
+.transfer form { display: grid; gap: .5rem; max-width: 34rem; }
+.transfer input, .transfer select, .transfer textarea { padding: .7rem; font: inherit; }
+.transfer button { margin-top: .75rem; padding: .8rem; font: inherit; font-weight: 700; }
+.field-error, .general-error { color: #9b1c1c; margin: 0 0 .5rem; }
+.preview-panel { margin-top: 1.5rem; border: 2px solid #176b5b; padding: 1rem; }
+.preview-panel dl { display: grid; grid-template-columns: minmax(9rem,1fr) 2fr; gap: .5rem; }
+.preview-panel dd { margin: 0; }
+.no-mutation { padding: .75rem; background: #fff4ce; }

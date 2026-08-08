@@ -8,13 +8,18 @@ use Harbor\DigitalBankingLab\Api\ApiError;
 
 final readonly class Router
 {
-    public function __construct(private MemberController $members, private MemberFinancialOverviewController $overviews, private MemberActivityProfileController $activityProfiles)
+    public function __construct(private MemberController $members, private MemberFinancialOverviewController $overviews, private MemberActivityProfileController $activityProfiles, private TransferPreviewController $transferPreviews)
     {
     }
 
-    public function dispatch(string $method, string $path): Response
+    public function dispatch(string $method, string $path, string $body = ''): Response
     {
         $path = rawurldecode(parse_url($path, PHP_URL_PATH) ?: '/');
+        if (preg_match('#^/api/members/([^/]+)/transfer-preview$#', $path, $matches) === 1) {
+            if ($method === 'OPTIONS') return new Response(204, [], '');
+            if ($method !== 'POST') return Response::json(405, (new ApiError('method_not_allowed', 'Method is not allowed for this resource.'))->toArray());
+            return $this->transferPreviews->create($matches[1], $body);
+        }
         if (preg_match('#^/api/members/([^/]+)/activity-profile$#', $path, $matches) === 1) {
             if ($method !== 'GET') return Response::json(405, (new ApiError('method_not_allowed', 'Method is not allowed for this resource.'))->toArray());
             return $this->activityProfiles->show($matches[1]);

@@ -1,6 +1,7 @@
 import { HarborApiError } from './api';
 import { displayLabel } from './presentation';
 import type { MemberPage, MemberPageState } from './state';
+import type { TransferFormModel } from './transfer';
 
 const escapeHtml = (value: string): string => value.replace(/[&<>'"]/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
@@ -35,7 +36,7 @@ export function renderMemberPage(root: HTMLElement, state: MemberPageState, page
       content = `${introduction}<section class="state-panel" aria-labelledby="accounts-title"><h2 id="accounts-title">Your accounts</h2><p>You don’t have any accounts available in digital banking.</p></section>`;
     } else {
       const cards = member.accounts.map(account => `<article class="account-card" data-account-id="${escapeHtml(account.accountId)}"><h3>${escapeHtml(account.displayName)}</h3><p class="account-type">${displayLabel(account.type)}</p><p class="balance"><span class="sr-only">Digital banking balance: </span>${escapeHtml(account.balance.formatted)}</p><p>Account status: <strong>${displayLabel(account.status)}</strong></p></article>`).join('');
-      content = `${introduction}<section aria-labelledby="accounts-title"><h2 id="accounts-title">Your accounts</h2><div class="account-grid">${cards}</div></section>`;
+      content = `${introduction}<section aria-labelledby="accounts-title"><h2 id="accounts-title">Your accounts</h2><div class="account-grid">${cards}</div></section>${transferForm(page, member.accounts)}`;
     }
   }
 
@@ -44,4 +45,16 @@ export function renderMemberPage(root: HTMLElement, state: MemberPageState, page
     void page.selectMember((event.currentTarget as HTMLSelectElement).value);
   });
   root.querySelector<HTMLButtonElement>('#retry')?.addEventListener('click', () => void page.retry());
+  root.querySelector<HTMLFormElement>('#transfer-form')?.addEventListener('submit', event => { event.preventDefault(); void page.transfer.submit(); });
+  for (const field of ['sourceAccountId','destinationAccountId','amount','memo'] as const) root.querySelector<HTMLInputElement|HTMLSelectElement>(`[name="${field}"]`)?.addEventListener('input',event=>page.transfer.update(field,(event.currentTarget as HTMLInputElement|HTMLSelectElement).value));
+}
+
+function transferForm(page:MemberPage,accounts:{accountId:string;displayName:string}[]):string {
+  const state=page.transfer.state, values=state.fields;
+  const options=(selected:string)=>`<option value="">Choose an account</option>${accounts.map(a=>`<option value="${escapeHtml(a.accountId)}"${a.accountId===selected?' selected':''}>${escapeHtml(a.displayName)}</option>`).join('')}`;
+  const messages=(name:keyof TransferFormModel):string[] => state.errors[name]??(name==='amount'?state.errors['amount.minorUnits']:undefined)??[];
+  const field=(name:keyof TransferFormModel)=>messages(name).length?`<p id="${name}-error" class="field-error">${messages(name).map(escapeHtml).join(' ')}</p>`:'';
+  const described=(name:keyof TransferFormModel)=>messages(name).length?` aria-describedby="${name}-error" aria-invalid="true"`:'';
+  const preview=state.preview?`<section class="preview-panel" role="status" aria-labelledby="preview-title"><h3 id="preview-title">Transfer Preview</h3><dl><dt>From</dt><dd>${escapeHtml(state.preview.sourceAccount.displayName)}</dd><dt>To</dt><dd>${escapeHtml(state.preview.destinationAccount.displayName)}</dd><dt>Amount</dt><dd>${escapeHtml(state.preview.amount.formatted)}</dd><dt>Current available balance</dt><dd>${escapeHtml(state.preview.sourceAvailableBalance.formatted)}</dd><dt>Projected available balance</dt><dd>${escapeHtml(state.preview.projectedAvailableBalance.formatted)}</dd><dt>Memo</dt><dd>${escapeHtml(state.preview.memo??'None')}</dd></dl><p class="no-mutation"><strong>No funds have been moved.</strong></p></section>`:'';
+  return `<section class="transfer" aria-labelledby="transfer-title"><h2 id="transfer-title">Transfer Preview</h2><p>Review how Harbor would interpret an instruction. This does not move money.</p><form id="transfer-form" novalidate><label for="sourceAccountId">From account</label><select id="sourceAccountId" name="sourceAccountId"${described('sourceAccountId')}>${options(values.sourceAccountId)}</select>${field('sourceAccountId')}<label for="destinationAccountId">To account</label><select id="destinationAccountId" name="destinationAccountId"${described('destinationAccountId')}>${options(values.destinationAccountId)}</select>${field('destinationAccountId')}<label for="amount">Amount (USD)</label><input id="amount" name="amount" inputmode="decimal" value="${escapeHtml(values.amount)}"${described('amount')}>${field('amount')}<label for="memo">Memo (optional)</label><textarea id="memo" name="memo" maxlength="140"${described('memo')}>${escapeHtml(values.memo)}</textarea>${field('memo')}<button type="submit"${state.kind==='submitting'?' disabled':''}>${state.kind==='submitting'?'Creating preview…':'Preview transfer'}</button>${state.generalError?`<p class="general-error" role="alert">${escapeHtml(state.generalError)}</p>`:''}</form>${preview}</section>`;
 }

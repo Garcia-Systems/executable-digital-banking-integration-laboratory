@@ -27,6 +27,15 @@ final readonly class Money
         return new self($this->minorUnits + $other->minorUnits, $this->currency);
     }
 
+    public function subtract(self $other): self
+    {
+        if ($this->currency !== $other->currency) {
+            throw new \InvalidArgumentException('Money currencies must match.');
+        }
+
+        return new self($this->minorUnits - $other->minorUnits, $this->currency);
+    }
+
     public function format(): string
     {
         $absolute = abs($this->minorUnits);

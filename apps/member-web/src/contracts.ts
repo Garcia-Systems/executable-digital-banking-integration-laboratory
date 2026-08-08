@@ -19,6 +19,12 @@ export interface MemberSummaryDto {
   accounts: AccountSummaryDto[];
 }
 
+export interface TransferAccountDto { accountId: string; displayName: string; }
+export interface TransferPreviewDto {
+  previewId: string; memberId: string; sourceAccount: TransferAccountDto; destinationAccount: TransferAccountDto;
+  amount: MoneyDto; sourceAvailableBalance: MoneyDto; projectedAvailableBalance: MoneyDto; memo: string | null;
+}
+
 export class ContractError extends Error {
   constructor(message = 'Harbor returned an unexpected member representation.') {
     super(message);
@@ -35,6 +41,18 @@ const text = (value: unknown): string => {
   if (typeof value !== 'string') throw new ContractError();
   return value;
 };
+
+const money = (value: unknown): MoneyDto => {
+  const candidate = record(value);
+  if (!Number.isInteger(candidate.minorUnits)) throw new ContractError('Harbor returned an unexpected transfer preview.');
+  return { currency: text(candidate.currency), minorUnits: candidate.minorUnits as number, formatted: text(candidate.formatted) };
+};
+
+export function parseTransferPreview(value: unknown): TransferPreviewDto {
+  const preview = record(value); const source = record(preview.sourceAccount); const destination = record(preview.destinationAccount);
+  if (preview.memo !== null && typeof preview.memo !== 'string') throw new ContractError('Harbor returned an unexpected transfer preview.');
+  return { previewId:text(preview.previewId), memberId:text(preview.memberId), sourceAccount:{accountId:text(source.accountId),displayName:text(source.displayName)}, destinationAccount:{accountId:text(destination.accountId),displayName:text(destination.displayName)}, amount:money(preview.amount), sourceAvailableBalance:money(preview.sourceAvailableBalance), projectedAvailableBalance:money(preview.projectedAvailableBalance), memo:preview.memo as string|null };
+}
 
 export function parseMemberSummary(value: unknown): MemberSummaryDto {
   const member = record(value);

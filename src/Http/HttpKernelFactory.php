@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Harbor\DigitalBankingLab\Http;
 
-use Harbor\DigitalBankingLab\Api\{MemberActivityProfilePresenter, MemberFinancialOverviewPresenter, MemberSummaryPresenter};
+use Harbor\DigitalBankingLab\Api\{MemberActivityProfilePresenter, MemberFinancialOverviewPresenter, MemberSummaryPresenter, TransferPreviewPresenter};
 use Harbor\DigitalBankingLab\Domain\FixedClock;
 use Harbor\DigitalBankingLab\Composition\LaboratoryApplicationFactory;
 
@@ -17,6 +17,7 @@ final class HttpKernelFactory
             new MemberController($applications->getMemberSummary(true, $northstarScenario), new MemberSummaryPresenter()),
             new MemberFinancialOverviewController($applications->getMemberFinancialOverview($northstarScenario, $heritageScenario), new MemberFinancialOverviewPresenter()),
             new MemberActivityProfileController($applications->getMemberActivityProfile(),new MemberActivityProfilePresenter(),new FixedClock('2026-01-15T14:30:00Z')),
+            new TransferPreviewController($applications->previewTransfer($northstarScenario, $heritageScenario), new TransferPreviewPresenter()),
         );
     }
 }

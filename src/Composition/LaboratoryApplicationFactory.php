@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Harbor\DigitalBankingLab\Composition;
 
-use Harbor\DigitalBankingLab\Application\{AccountBalanceGateway, ActivityPolicy, ApplicationTrace, DigitalBankingGateway, GetAccountBalanceDetails, GetMemberActivityProfile, GetMemberFinancialOverview, GetMemberSummary, MemberNotFoundGateway};
+use Harbor\DigitalBankingLab\Application\{AccountBalanceGateway, ActivityPolicy, ApplicationTrace, DigitalBankingGateway, GetAccountBalanceDetails, GetMemberActivityProfile, GetMemberFinancialOverview, GetMemberSummary, MemberNotFoundGateway, PreviewTransfer};
+use Harbor\DigitalBankingLab\Domain\SequenceIdGenerator;
 use Harbor\DigitalBankingLab\Infrastructure\Database\{LaboratoryDatabase,SqlMemberActivityRepository};
 
 use Harbor\DigitalBankingLab\Infrastructure\Http\DeterministicHttpClient;
@@ -50,5 +51,10 @@ final readonly class LaboratoryApplicationFactory
     public function getMemberActivityProfile(?ActivityPolicy $policy=null): GetMemberActivityProfile
     {
         return new GetMemberActivityProfile(new SqlMemberActivityRepository(LaboratoryDatabase::create($this->projectRoot)),$policy??ActivityPolicy::laboratoryDefault());
+    }
+
+    public function previewTransfer(string $northstarScenario = 'normal', string $heritageScenario = 'normal'): PreviewTransfer
+    {
+        return new PreviewTransfer($this->digitalBankingGateway(true, $northstarScenario), $this->accountBalanceGateway($heritageScenario), new SequenceIdGenerator('preview-'));
     }
 }

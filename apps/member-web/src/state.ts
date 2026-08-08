@@ -1,5 +1,6 @@
 import { RequestAbortedError, type MemberApi } from './api';
 import { ContractError, type MemberSummaryDto } from './contracts';
+import { TransferForm } from './transfer';
 
 export type RequestId = `request-${string}`;
 
@@ -40,13 +41,14 @@ export class MemberPage {
   selectedMemberId: string;
   private listener: (state: MemberPageState) => void = () => undefined;
   private active?: { requestId: RequestId; controller: AbortController };
+  readonly transfer: TransferForm;
 
   constructor(
     private readonly api: MemberApi,
     memberId: string,
     private readonly sequence = new RequestSequence(),
     readonly trace = new RequestTrace()
-  ) { this.selectedMemberId = memberId; }
+  ) { this.selectedMemberId = memberId; this.transfer=new TransferForm(api as MemberApi & Partial<import('./api').TransferApi>,()=>this.selectedMemberId,()=>this.listener(this.state)); }
 
   subscribe(listener: (state: MemberPageState) => void): void {
     this.listener = listener;
@@ -55,6 +57,7 @@ export class MemberPage {
 
   selectMember(memberId: string): Promise<void> {
     this.selectedMemberId = memberId;
+    this.transfer.reset();
     return this.load(memberId);
   }
 
