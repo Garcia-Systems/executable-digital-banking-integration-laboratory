@@ -1,0 +1,9 @@
+{
+  "previewId":"preview-0001","memberId":"member-0001",
+  "sourceAccount":{"accountId":"account-0001","displayName":"Everyday Checking"},
+  "destinationAccount":{"accountId":"account-0002","displayName":"Primary Savings"},
+  "amount":{"currency":"USD","minorUnits":50000,"formatted":"$500.00"},
+  "sourceAvailableBalance":{"currency":"USD","minorUnits":238575,"formatted":"$2,385.75"},
+  "projectedAvailableBalance":{"currency":"USD","minorUnits":188575,"formatted":"$1,885.75"},
+  "memo":"Teaching preview"
+}
