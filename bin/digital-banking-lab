@@ -26,10 +26,37 @@ use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, H
 use Harbor\DigitalBankingLab\Application\{FailureMatrixRenderer, FailureScenarioLaboratory, IntegrationFailureReport};
 use Harbor\DigitalBankingLab\Composition\LaboratoryApplicationFactory;
 use Harbor\DigitalBankingLab\Application\{ApplicationTrace, ApplicationTraceRenderer, MemberFinancialOverviewRenderer};
+use Harbor\DigitalBankingLab\Infrastructure\Database\{LaboratoryDatabase, SqlMemberActivityRepository};
+use Harbor\DigitalBankingLab\Application\FindInactiveMembers;
+use Harbor\DigitalBankingLab\Domain\FixedClock;
 
 $command = $argv[1] ?? null;
 $renderer = new EcosystemRenderer();
 $ecosystem = HarborEcosystemFixture::create();
+
+if (in_array($command, ['db-members', 'account-activity', 'inactive-members', 'sql-example', 'sql-pitfall', 'explain'], true)) {
+    try {
+        $repository = new SqlMemberActivityRepository(LaboratoryDatabase::create(dirname(__DIR__)));
+        $clock = new FixedClock('2026-01-15T14:30:00Z');
+        if ($command === 'db-members') {
+            echo "Database Members (Harbor operational projection)\n";
+            foreach ($repository->members() as $member) echo "{$member->id->value} | {$member->name} | {$member->status->value}\n";
+        } elseif ($command === 'account-activity') {
+            $id = $argv[2] ?? null; if ($id === null) throw new InvalidArgumentException('An account identifier is required.');
+            echo "Account Activity\nAccount: {$id}\n\n";
+            foreach ($repository->activitySince(new AccountId($id), new DateTimeImmutable('0001-01-01T00:00:00Z')) as $activity) echo $activity->occurredAt->format('Y-m-d\TH:i:s\Z') . " | {$activity->type} | " . ($activity->amount?->format() ?? '—') . "\n";
+        } else {
+            $days = 180; foreach (array_slice($argv, 2) as $arg) if (str_starts_with($arg, '--days=')) $days=(int)substr($arg,7);
+            $asOf=$clock->now(); $cutoff=$asOf->sub(new DateInterval("P{$days}D"));
+            if ($command === 'inactive-members') { echo 'As of: '.$asOf->format('Y-m-d\TH:i:s\Z')."\nCutoff: ".$cutoff->format('Y-m-d\TH:i:s\Z')."\n"; foreach((new FindInactiveMembers($repository))->execute($cutoff) as $m) echo "{$m->id->value} | {$m->name}\n"; }
+            elseif ($command === 'sql-example' && ($argv[2] ?? '') === 'inactive-members') echo "SQL:\n".SqlMemberActivityRepository::INACTIVE_MEMBERS_SQL."\n\nParameters:\ncutoff = ".$cutoff->format('Y-m-d\TH:i:s\Z')."\n";
+            elseif ($command === 'sql-pitfall' && ($argv[2] ?? '') === 'inactivity') { echo "Incorrect row-filter query returns:\n"; foreach($repository->incorrectInactiveMemberIds($cutoff) as $id) echo "$id\n"; echo "\nCorrect NOT EXISTS query returns:\n"; foreach($repository->inactiveMembers($cutoff) as $m) echo $m->id->value."\n"; echo "\nReason:\nmember-0001 has old activity AND recent activity; an old row does not prove no recent row exists.\n"; }
+            elseif ($command === 'explain' && ($argv[2] ?? '') === 'inactive-members') { echo "SQLite EXPLAIN QUERY PLAN (inspect scans, indexes, and correlated lookups):\n"; foreach($repository->explainInactiveMembers($cutoff) as $row) echo $row['detail']."\n"; }
+            else throw new InvalidArgumentException('Unknown SQL laboratory example.');
+        }
+        exit(0);
+    } catch (Throwable $error) { fwrite(STDERR, get_class($error).': '.$error->getMessage()."\n"); exit(1); }
+}
 
 if (in_array($command, ['member-overview', 'member-overview-trace'], true)) {
     $identifier = $argv[2] ?? null;
@@ -205,5 +232,5 @@ if ($command === 'laboratory' || $command === 'determinism') {
     }
 }
 
-fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|member-overview MEMBER_ID|member-overview-trace MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID|core-account ACCOUNT_ID [--scenario=SCENARIO]|soap-request ACCOUNT_ID|integration-styles|integrations|integration ID|architecture-check|failure SCENARIO|failure-matrix>\n");
+fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|...|db-members|account-activity ACCOUNT_ID|inactive-members --days=180|sql-example inactive-members|sql-pitfall inactivity|explain inactive-members>\n");
 exit(1);
