@@ -1,5 +1,7 @@
 # Chapter 21: Git, Code Review, and Deployment Readiness
 
+![Chapter 21 — Git, Code Review, and Deployment Readiness](../images/chapters/chapter-21-git-code-review-deployment-readiness.png)
+
 ## Educational question
 
 How should Harbor prepare a full-stack change so another engineer can review it confidently and the repository can prove it is ready to merge and deploy?

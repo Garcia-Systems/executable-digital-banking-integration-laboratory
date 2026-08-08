@@ -1,5 +1,7 @@
 # Chapter 9: PHP Application Services and Orchestration
 
+![Chapter 9 — PHP Application Services and Orchestration](../images/chapters/chapter-09-php-application-services-orchestration.png)
+
 ## Educational question
 
 How should Harbor coordinate multiple domain and integration capabilities into a complete application use case without putting orchestration logic in controllers, adapters, or domain objects?

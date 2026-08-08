@@ -1,5 +1,7 @@
 # Chapter 10: SQL for Digital Banking
 
+![Chapter 10 — SQL for Digital Banking](../images/chapters/chapter-10-sql-for-digital-banking.png)
+
 ## Educational question
 
 **How should Harbor retrieve and analyze relational banking data with SQL while preserving clear boundaries between database rows, application models, and business meaning?**

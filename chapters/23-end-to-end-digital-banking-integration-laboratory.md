@@ -1,5 +1,7 @@
 # Chapter 23: End-to-End Digital Banking Integration Laboratory
 
+![Chapter 23 — End-to-End Digital Banking Integration Laboratory](../images/chapters/chapter-23-end-to-end-digital-banking-laboratory.png)
+
 ## Educational question
 
 > What does a complete deterministic digital banking integration system look like when all of Harbor's application, integration, data, frontend, security, testing, and delivery boundaries work together?

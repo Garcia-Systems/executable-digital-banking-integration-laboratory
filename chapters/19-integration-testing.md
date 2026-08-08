@@ -1,5 +1,7 @@
 # Chapter 19: Integration Testing Across Harbor Boundaries
 
+![Chapter 19 — Integration Testing Across Harbor Boundaries](../images/chapters/chapter-19-integration-testing-harbor-boundaries.png)
+
 ## Educational question
 
 **How should Harbor test that real application components collaborate correctly across HTTP, SQL, REST, SOAP, and presentation boundaries without depending on live external systems?**

@@ -1,5 +1,7 @@
 # Chapter 3: Vendor Platform Boundaries
 
+![Chapter 3 — Vendor Platform Boundaries](../images/chapters/chapter-03-vendor-platform-boundaries.png)
+
 ## Educational question
 
 **How can Harbor use a vendor-owned digital banking platform without allowing the vendor's data model to become Harbor's application model?**

@@ -1,5 +1,7 @@
 # Chapter 17: Protecting Sensitive Member and Financial Data
 
+![Chapter 17 — Protecting Sensitive Member and Financial Data](../images/chapters/chapter-17-protecting-sensitive-member-financial-data.png)
+
 ## Educational question
 
 **How should Harbor minimize, control, and safely expose sensitive member and financial information across APIs, application services, integrations, diagnostics, and the browser?** Chapter 16 asked whether Harbor can validate data crossing a boundary. Chapter 17 asks whether a layer should receive, retain, expose, or log that data at all.

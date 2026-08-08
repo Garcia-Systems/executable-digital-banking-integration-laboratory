@@ -1,5 +1,7 @@
 # Chapter 0: The Digital Banking Integration Ecosystem
 
+![Chapter 0 — The Digital Banking Integration Ecosystem](../images/chapters/chapter-00-digital-banking-integration-ecosystem.png)
+
 ## Educational question
 
 > What systems, actors, channels, and boundaries exist in a modern vendor-centered digital banking environment?

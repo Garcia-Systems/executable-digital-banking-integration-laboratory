@@ -1,5 +1,7 @@
 # Chapter 1: Building a Deterministic Integration Laboratory
 
+![Chapter 1 — Building a Deterministic Integration Laboratory](../images/chapters/chapter-01-deterministic-integration-laboratory.png)
+
 ## Educational question
 
 How can we build a repeatable laboratory for experimenting with digital banking integrations without depending on real banking systems, vendor services, credentials, networks, or member data?

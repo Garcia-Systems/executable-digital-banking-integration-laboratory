@@ -1,5 +1,7 @@
 # Chapter 8: Handling Vendor Failures Safely
 
+![Chapter 8 — Handling Vendor Failures Safely](../images/chapters/chapter-08-handling-vendor-failures-safely.png)
+
 ## Educational question
 
 **How should Harbor classify, contain, and translate failures from external banking systems without leaking vendor details or destabilizing the member experience?**

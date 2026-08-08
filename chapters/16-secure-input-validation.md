@@ -1,5 +1,7 @@
 # Chapter 16: Secure Input Validation and Trust Boundaries
 
+![Chapter 16 — Secure Input Validation and Trust Boundaries](../images/chapters/chapter-16-secure-input-validation-trust-boundaries.png)
+
 ## Educational question
 
 How should Harbor treat data crossing browser, API, vendor, legacy, and database boundaries so untrusted input cannot silently become trusted application state?

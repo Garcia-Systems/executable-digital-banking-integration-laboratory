@@ -1,5 +1,7 @@
 # Chapter 5: Consuming a Vendor REST API
 
+![Chapter 5 — Consuming a Vendor REST API](../images/chapters/chapter-05-consuming-vendor-rest-api.png)
+
 ## Educational question
 
 **How should Harbor communicate with a vendor REST API without coupling its application and domain layers to HTTP or vendor-specific transport details?**

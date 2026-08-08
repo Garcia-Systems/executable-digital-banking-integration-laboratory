@@ -1,5 +1,7 @@
 # Chapter 7: Integration Adapters as a Reusable Pattern
 
+![Chapter 7 — Integration Adapters as a Reusable Pattern](../images/chapters/chapter-07-integration-adapters-reusable-pattern.png)
+
 ## Educational question
 
 What architectural pattern allows Harbor to integrate with many external systems without spreading vendor-specific logic across the application?

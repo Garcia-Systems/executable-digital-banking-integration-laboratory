@@ -1,5 +1,7 @@
 # Chapter 12: Building the Member Web Experience
 
+![Chapter 12 — Building the Member Web Experience](../images/chapters/chapter-12-building-member-web-experience.png)
+
 ## Educational question
 
 **How should Harbor build a member-facing web experience that consumes Harbor-owned APIs without exposing vendor complexity to the browser?**
