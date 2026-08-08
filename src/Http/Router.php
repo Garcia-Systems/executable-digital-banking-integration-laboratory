@@ -12,7 +12,8 @@ final readonly class Router
     {
     }
 
-    public function dispatch(string $method, string $path, string $body = ''): Response
+    /** @param array<string,string> $headers */
+    public function dispatch(string $method, string $path, string $body = '', array $headers = ['Content-Type' => 'application/json']): Response
     {
         $path = rawurldecode(parse_url($path, PHP_URL_PATH) ?: '/');
         if (preg_match('#^/api/members/([^/]+)/verification$#',$path,$matches)===1) {
@@ -22,6 +23,9 @@ final readonly class Router
         if (preg_match('#^/api/members/([^/]+)/transfer-preview$#', $path, $matches) === 1) {
             if ($method === 'OPTIONS') return new Response(204, [], '');
             if ($method !== 'POST') return Response::json(405, (new ApiError('method_not_allowed', 'Method is not allowed for this resource.'))->toArray());
+            $contentType = strtolower(trim(explode(';', $headers['Content-Type'] ?? $headers['content-type'] ?? '')[0]));
+            if ($contentType !== 'application/json') return Response::json(415, (new ApiError('unsupported_media_type', 'Content-Type must be application/json.'))->toArray());
+            if (strlen($body) > 65_536) return Response::json(413, (new ApiError('payload_too_large', 'Request body exceeds the 64 KiB limit.'))->toArray());
             return $this->transferPreviews->create($matches[1], $body);
         }
         if (preg_match('#^/api/members/([^/]+)/activity-profile$#', $path, $matches) === 1) {

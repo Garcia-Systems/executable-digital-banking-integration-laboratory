@@ -14,7 +14,7 @@ final readonly class Response
     /** @param array<string, mixed> $data */
     public static function json(int $status, array $data): self
     {
-        return new self($status, ['Content-Type' => 'application/json; charset=utf-8'], json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n");
+        return new self($status, ['Content-Type' => 'application/json; charset=utf-8', 'X-Content-Type-Options' => 'nosniff'], json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n");
     }
 
     public function send(): void

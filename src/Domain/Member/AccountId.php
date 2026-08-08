@@ -8,9 +8,7 @@ final readonly class AccountId
 {
     public function __construct(public string $value)
     {
-        if ($value === '') {
-            throw new \InvalidArgumentException('Account ID must not be empty.');
-        }
+        if (preg_match('/\Aaccount-[0-9]{4}\z/D', $value) !== 1) throw new \InvalidArgumentException('Account ID must use the Harbor account-0000 format.');
     }
 
     public function equals(self $other): bool
