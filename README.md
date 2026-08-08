@@ -1,6 +1,6 @@
 # Executable Digital Banking Integration Laboratory
 
-An executable textbook about one central engineering question:
+## Central question
 
 > **How do you safely extend a vendor-centered digital banking ecosystem with custom full-stack software?**
 
@@ -8,7 +8,11 @@ The learner is a full-stack integration engineer at **Harbor Community Credit Un
 
 ## What this laboratory teaches
 
-The book will grow a single architecture through PHP application and integration services, TypeScript clients, HTML/CSS experiences, SQL/MySQL-oriented data examples, simulated REST and SOAP boundaries, secure coding, automated tests, debugging, delivery practices, and evidence-driven experience improvements.
+## What the laboratory contains
+
+Volume I composes a PHP backend and Harbor REST API, TypeScript Member Web, relational SQL, Northstar REST/JSON integration, Heritage SOAP/XML legacy integration, ClearVerify REST/JSON fintech integration, security and trust-boundary laboratories, unit/integration/frontend/capstone tests, debugging scenarios, privacy-conscious analytics, and delivery-readiness tooling.
+
+The book grows a single architecture through application and integration services, TypeScript clients, HTML/CSS experiences, SQL/MySQL-oriented data examples, simulated REST and SOAP boundaries, secure coding, automated tests, debugging, delivery practices, and evidence-driven experience improvements.
 
 Each important concept should have a domain model, deterministic behavior, tests, an observable interface, an explanation, and an exercise. Production banking concerns are identified honestly but kept separate from teaching simplifications.
 
@@ -17,6 +21,8 @@ Each important concept should have a domain model, deterministic behavior, tests
 Core exercises require no credentials, internet connection, live banking platform, or real member data. Fixed fictional fixtures and simulated services make runs repeatable, tests trustworthy, failures reproducible, and sensitive-data mistakes avoidable. The same input should yield byte-for-byte identical output.
 
 ## Current chapters
+
+**Volume I roadmap: Chapters 0–23 complete.** The [canonical complete architecture diagram](diagrams/end-to-end-digital-banking-laboratory.md) connects every major boundary.
 
 [Chapter 0: The Digital Banking Integration Ecosystem](chapters/00-digital-banking-integration-ecosystem.md) introduces the Member actor, Harbor's web, mobile, operations, application, and database systems, plus vendor digital banking, legacy core, and fintech systems. Explicit ownership and category enums make boundaries visible. A validated directed graph and CLI turn the architecture into executable behavior.
 
@@ -66,6 +72,8 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 22: Optimizing the Digital Banking Experience](chapters/22-digital-experience-optimization.md) adds fictional privacy-conscious analytics, deterministic funnels and friction analysis, experience and SEO audits, Member Web instrumentation, semantic navigation, and public transfer-preview help. See the [digital experience optimization diagram](diagrams/digital-experience-optimization.md).
 
+[Chapter 23: End-to-End Digital Banking Integration Laboratory](chapters/23-end-to-end-digital-banking-integration-laboratory.md) is the Volume I capstone: it composes every established boundary into successful and expected-failure journeys, adds process-level capstone tests and one complete verification path, and preserves the architecture rather than collapsing it. See the [full-system diagram](diagrams/end-to-end-digital-banking-laboratory.md), [walkthrough](docs/capstone-walkthrough.md), and [test matrix](docs/capstone-test-matrix.md).
+
 The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves; Chapter 18 isolates meaningful behavior; Chapter 19 verifies that selected real components agree; Chapter 20 locates propagated symptoms; Chapter 21 turns diffs, risks, and evidence into review and readiness discipline.
 
 ## Requirements and installation
@@ -87,6 +95,24 @@ composer install
 ```
 
 The checked-in `bootstrap.php` means core commands remain offline and dependency-free.
+
+Install Member Web dependencies as well:
+
+```bash
+cd apps/member-web && npm install --no-audit --no-fund && cd ../..
+```
+
+## Quick start and capstone
+
+```bash
+./bin/verify
+./bin/digital-banking-lab system-map
+./bin/digital-banking-lab run-capstone
+./bin/digital-banking-lab run-capstone --trace
+./bin/digital-banking-lab capstone-verify
+```
+
+Start Harbor API with `php -S 127.0.0.1:8080 -t public`. In another terminal, run `cd apps/member-web && npm run dev`, then open the displayed local URL. The exact checking-to-savings browser journey is in the [manual walkthrough](docs/capstone-walkthrough.md).
 
 ## Run the laboratory
 
@@ -238,6 +264,13 @@ composer test:integration
 
 - **Unit:** fast, isolated domain and application behavior with focused frontend parsers, reducers, and validators.
 - **Integration:** real local collaboration across deliberately selected HTTP, SQL, REST/JSON, SOAP/XML, adapter, and contract boundaries.
+- **Frontend:** TypeScript type checking and jsdom behavior/contract tests; browser smoke testing remains an explicitly manual journey.
+- **Capstone:** deterministic process-level composition, failure classification, data minimization, no mutation, and repeatability (`php tests/Capstone/run.php`).
+- **Complete:** `./bin/verify` runs the PHP regression/unit/integration/capstone/debug/delivery suites plus frontend type checking and tests.
+
+## Safety and scope
+
+Harbor, Northstar, Heritage, ClearVerify, Avery Morgan, and every member/account datum are fictional. No money moves, no ledger is posted, and no live vendor service or secret is used. This laboratory is not production banking software, a deployment, or a compliance/security certification. Production authentication, authorization, encryption/key management, real analytics, payment rails, regulatory implementation, and real identity verification are intentionally outside Volume I.
 - **End-to-end:** a small number of complete member or employee journeys later in the book.
 
 Chapter 20 adds deterministic full-stack debugging, and Chapter 21 adds delivery-tool tests for classification, risk, review, Git inspection, readiness, and CI configuration.

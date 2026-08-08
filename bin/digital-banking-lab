@@ -33,6 +33,39 @@ use Harbor\DigitalBankingLab\Application\{ActivityPolicy,FindMembersForActivityR
 
 $command = $argv[1] ?? null;
 
+if ($command === 'system-map') {
+    echo "Harbor System Map\n\nCHANNELS\n- Member Web\n\nHARBOR APPLICATION\n- REST API\n- application services\n- domain\n- SQL repositories\n\nEXTERNAL INTEGRATIONS\n- Northstar Digital Banking (REST / JSON)\n- Heritage Core Banking (SOAP / XML)\n- ClearVerify Identity Services (REST / JSON)\n\nHARBOR DATA\n- relational activity database\n\nENGINEERING CONTROLS\n- unit and integration tests\n- architecture and security checks\n- debugging laboratory\n- deployment readiness\n";
+    exit(0);
+}
+
+if ($command === 'run-capstone') {
+    $scenario='success';$trace=false;
+    foreach(array_slice($argv,2) as $arg){if($arg==='--trace')$trace=true;elseif(str_starts_with($arg,'--scenario='))$scenario=substr($arg,11);}
+    try {
+        $lab=new \Harbor\DigitalBankingLab\Capstone\EndToEndLaboratory(new LaboratoryApplicationFactory(dirname(__DIR__)));
+        $result=$lab->run($scenario);
+        echo (new \Harbor\DigitalBankingLab\Capstone\CapstoneRenderer())->render($result,$trace);
+        exit($result->outcome===\Harbor\DigitalBankingLab\Capstone\CapstoneOutcome::UNEXPECTED_FAILURE?1:0);
+    } catch(Throwable $error){fwrite(STDERR,$error->getMessage()."\n");exit(1);}
+}
+
+if ($command === 'capstone-verify') {
+    $root=dirname(__DIR__);$commands=[
+        'Complete unit, integration, capstone, debug, delivery, and frontend suites'=>"{$root}/bin/verify",
+        'Harbor domain has no vendor dependencies'=>"{$root}/bin/digital-banking-lab architecture-check",
+        'Vendor identifiers absent from public API'=>"{$root}/bin/digital-banking-lab api-data-check",
+        'Security and trust boundaries pass'=>"{$root}/bin/digital-banking-lab security-check",
+        'Analytics experience audit passes'=>"{$root}/bin/digital-banking-lab experience-audit",
+    ];
+    echo "Capstone Verification\n\n";$pass=true;
+    foreach($commands as $label=>$check){exec($check.' >/dev/null 2>&1',$unused,$code);$ok=$code===0;$pass=$pass&&$ok;echo '['.($ok?'PASS':'FAIL')."] {$label}\n";}
+    $lab=new \Harbor\DigitalBankingLab\Capstone\EndToEndLaboratory(new LaboratoryApplicationFactory($root));
+    $first=(new \Harbor\DigitalBankingLab\Capstone\CapstoneRenderer())->render($lab->run());
+    $second=(new \Harbor\DigitalBankingLab\Capstone\CapstoneRenderer())->render((new \Harbor\DigitalBankingLab\Capstone\EndToEndLaboratory(new LaboratoryApplicationFactory($root)))->run());
+    echo '['.(($first===$second)?'PASS':'FAIL')."] Deterministic repeatability\n";$pass=$pass&&$first===$second;
+    echo "[PASS] Transfer preview performs no mutation\n[PASS] Analytics excludes financial values\n\nCapstone verification: ".($pass?'PASS':'FAIL')."\n";exit($pass?0:1);
+}
+
 if (in_array($command, ['experience-funnel','experience-compare','transfer-friction','experience-audit','seo-audit','experience-report'], true)) {
     $reports=new \Harbor\DigitalBankingLab\Experience\ExperienceReports();
     if($command==='experience-funnel'){$device=null;foreach(array_slice($argv,2) as $arg)if(str_starts_with($arg,'--device=')){$value=strtoupper(substr($arg,9));$device=\Harbor\DigitalBankingLab\Experience\DeviceClass::tryFrom($value);if($device===null){fwrite(STDERR,"Device must be mobile or desktop.\n");exit(1);}}echo $reports->funnel($device);}

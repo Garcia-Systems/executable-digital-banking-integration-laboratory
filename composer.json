@@ -10,6 +10,7 @@
     "test": "php tests/run.php && php tests/Unit/run.php && php tests/Experience/run.php",
     "test:unit": "php tests/Unit/run.php",
     "test:integration": "php tests/Integration/run.php",
+    "test:capstone": "php tests/Capstone/run.php",
     "test:debug": "php tests/Debug/run.php",
     "test:delivery": "php tests/Delivery/run.php",
     "verify": "composer test && composer test:integration && composer test:debug && composer test:delivery && cd apps/member-web && npm run typecheck && npm test"
