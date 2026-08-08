@@ -1,3 +1,10 @@
 /vendor/
 /apps/member-web/node_modules/
 /apps/member-web/dist/
+/coverage/
+/.env
+/.env.local
+/.idea/
+/.vscode/
+*.sqlite
+*.sqlite3

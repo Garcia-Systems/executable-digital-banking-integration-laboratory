@@ -62,7 +62,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 20: Debugging the Full Stack](chapters/20-full-stack-debugging.md) adds deterministic, isolated fault laboratories for tracing symptoms to the first divergent browser, HTTP, application, integration, presentation, or SQL boundary. See the [full-stack debugging diagram](diagrams/full-stack-debugging.md).
 
-The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves; Chapter 18 isolates meaningful behavior; Chapter 19 verifies that selected real components agree; Chapter 20 uses boundary evidence to locate the cause of a propagated symptom.
+[Chapter 21: Git, Code Review, and Deployment Readiness](chapters/21-git-code-review-deployment-readiness.md) adds deterministic diff classification, risk reasoning, review scenarios, Git inspection, and evidence-based readiness gates without creating pull requests or deploying. See the [change-delivery workflow](diagrams/change-delivery-workflow.md).
+
+The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves; Chapter 18 isolates meaningful behavior; Chapter 19 verifies that selected real components agree; Chapter 20 locates propagated symptoms; Chapter 21 turns diffs, risks, and evidence into review and readiness discipline.
 
 ## Requirements and installation
 
@@ -236,7 +238,7 @@ composer test:integration
 - **Integration:** real local collaboration across deliberately selected HTTP, SQL, REST/JSON, SOAP/XML, adapter, and contract boundaries.
 - **End-to-end:** a small number of complete member or employee journeys later in the book.
 
-Chapter 20 will focus on debugging the full stack from browser symptoms through Harbor APIs, application services, adapters, vendors, and SQL. It is not implemented here.
+Chapter 20 adds deterministic full-stack debugging, and Chapter 21 adds delivery-tool tests for classification, risk, review, Git inspection, readiness, and CI configuration.
 
 ## Member Web
 
@@ -288,11 +290,33 @@ Chapter 20 scenarios intentionally replace exactly one component in a separate d
 ./bin/digital-banking-lab debug-detail northstar-new-product-class
 ```
 
-The catalog and run views withhold the root cause; trace narrows the boundary, while detail reveals only controlled, data-minimized engineering evidence. The next chapter focuses on **Git, code review, and deployment-readiness workflows**.
+The catalog and run views withhold the root cause; trace narrows the boundary, while detail reveals only controlled, data-minimized engineering evidence.
+
+## Development workflow
+
+1. Make a focused change on a feature branch.
+2. Run targeted tests.
+3. Run complete local validation with `./bin/verify`.
+4. Inspect `git status`, `git diff`, and then `git diff main...HEAD`.
+5. Review impact and risk with the Chapter 21 commands.
+6. Confirm deployment readiness before the next delivery step.
+
+```bash
+./bin/digital-banking-lab delivery-status
+./bin/digital-banking-lab review-impact
+./bin/digital-banking-lab review-scenarios
+./bin/digital-banking-lab review-run vendor-leak
+./bin/digital-banking-lab review-assess vendor-leak
+./bin/digital-banking-lab change-risk
+./bin/digital-banking-lab deployment-readiness
+./bin/digital-banking-lab release-summary
+```
+
+The validation workflow runs on pull requests and pushes to `main`; it installs PHP/frontend dependencies, runs the same `./bin/verify` core as developers, then runs architecture, security, and API-data checks. It uses no secrets, live vendors, merge automation, or deployment. The next chapter will focus on **digital experience optimization using analytics, usability, navigation, conversion, content, and SEO concepts**.
 
 ## Roadmap
 
-Chapters 0 through 20 are implemented. Later entries describe direction, not existing chapters.
+Chapters 0 through 21 are implemented. Later entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -315,8 +339,8 @@ Chapters 0 through 20 are implemented. Later entries describe direction, not exi
 19. **Unit testing** — meaningful deterministic boundaries (Chapter 18 — implemented)
 20. **Integration testing** — deterministic tests at system boundaries (Chapter 19 — implemented)
 21. **Full-stack debugging** — trace failures across browser, services, and adapters (Chapter 20 — implemented)
-22. **Git, code review, and deployment readiness** — reviewable changes and delivery discipline (Chapter 21 — next)
-23. **Digital experience optimization** — analytics, usability, conversion, navigation, and SEO
+22. **Git, code review, and deployment readiness** — reviewable changes and delivery discipline (Chapter 21 — implemented)
+23. **Digital experience optimization** — analytics, usability, conversion, navigation, content, and SEO (Chapter 22 — next)
 24. **End-to-end digital banking integration laboratory** — assemble and assess the complete flow
 
 ## Safety and scope

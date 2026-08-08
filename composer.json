@@ -11,7 +11,8 @@
     "test:unit": "php tests/Unit/run.php",
     "test:integration": "php tests/Integration/run.php",
     "test:debug": "php tests/Debug/run.php",
-    "verify": "composer test && composer test:integration && composer test:debug && cd apps/member-web && npm run typecheck && npm test"
+    "test:delivery": "php tests/Delivery/run.php",
+    "verify": "composer test && composer test:integration && composer test:debug && composer test:delivery && cd apps/member-web && npm run typecheck && npm test"
   },
   "require": {
     "php": ">=8.2"

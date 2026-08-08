@@ -5,5 +5,6 @@ echo '== PHP legacy/full suite =='; php tests/run.php
 echo '== PHP focused unit suite =='; php tests/Unit/run.php
 echo '== PHP integration suite =='; php tests/Integration/run.php
 echo '== Full-stack debug laboratory suite =='; php tests/Debug/run.php
+echo '== Delivery workflow suite =='; php tests/Delivery/run.php
 echo '== Member Web typecheck =='; (cd apps/member-web && npm run typecheck)
 echo '== Member Web tests =='; (cd apps/member-web && npm test)
