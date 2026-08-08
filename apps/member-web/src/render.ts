@@ -40,7 +40,8 @@ export function renderMemberPage(root: HTMLElement, state: MemberPageState, page
     }
   }
 
-  root.innerHTML = `${selector(page.selectedMemberId)}${content}`;
+  root.innerHTML = `<nav class="member-nav" aria-label="Member navigation"><a href="#accounts-title" data-destination="accounts">Accounts</a><a href="#transfer-title" data-destination="transfer">Transfer Preview</a><a href="/help/transfer-preview.html" data-destination="help">Help</a></nav>${selector(page.selectedMemberId)}${content}`;
+  root.querySelectorAll<HTMLAnchorElement>('[data-destination]').forEach(link=>link.addEventListener('click',()=>page.analytics.record('navigation_selected',{destination:link.dataset.destination as 'accounts'|'transfer'|'help'})));
   root.querySelector<HTMLSelectElement>('#member-selector')?.addEventListener('change', event => {
     void page.selectMember((event.currentTarget as HTMLSelectElement).value);
   });

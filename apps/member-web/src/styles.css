@@ -4,6 +4,8 @@ body { margin: 0; min-width: 0; line-height: 1.5; }
 .shell { width: min(100% - 2rem, 68rem); margin-inline: auto; }
 .site-header { padding: var(--space-2) 0; color: var(--white); background: var(--navy); }
 .brand { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.member-nav { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem; }
+.member-nav a { min-height: 2.75rem; display: inline-flex; align-items: center; padding: .55rem .8rem; color: var(--navy); font-weight: 700; }
 main { padding-block: var(--space-4); }
 h1, h2, h3 { line-height: 1.2; }
 h1 { margin: var(--space-1) 0; font-size: clamp(1.8rem, 7vw, 2.6rem); }
@@ -28,7 +30,7 @@ button:focus-visible { outline: .2rem solid var(--navy); outline-offset: .2rem; 
 
 .transfer { margin-top: 2rem; padding: 1.5rem; background: white; border-radius: .75rem; }
 .transfer form { display: grid; gap: .5rem; max-width: 34rem; }
-.transfer input, .transfer select, .transfer textarea { padding: .7rem; font: inherit; }
+.transfer input, .transfer select, .transfer textarea { width: 100%; min-width: 0; padding: .7rem; font: inherit; }
 .transfer button { margin-top: .75rem; padding: .8rem; font: inherit; font-weight: 700; }
 .field-error, .general-error { color: #9b1c1c; margin: 0 0 .5rem; }
 .preview-panel { margin-top: 1.5rem; border: 2px solid #176b5b; padding: 1rem; }

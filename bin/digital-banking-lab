@@ -33,6 +33,17 @@ use Harbor\DigitalBankingLab\Application\{ActivityPolicy,FindMembersForActivityR
 
 $command = $argv[1] ?? null;
 
+if (in_array($command, ['experience-funnel','experience-compare','transfer-friction','experience-audit','seo-audit','experience-report'], true)) {
+    $reports=new \Harbor\DigitalBankingLab\Experience\ExperienceReports();
+    if($command==='experience-funnel'){$device=null;foreach(array_slice($argv,2) as $arg)if(str_starts_with($arg,'--device=')){$value=strtoupper(substr($arg,9));$device=\Harbor\DigitalBankingLab\Experience\DeviceClass::tryFrom($value);if($device===null){fwrite(STDERR,"Device must be mobile or desktop.\n");exit(1);}}echo $reports->funnel($device);}
+    elseif($command==='experience-compare')echo $reports->compare();
+    elseif($command==='transfer-friction')echo $reports->friction();
+    elseif($command==='experience-audit')echo $reports->audit();
+    elseif($command==='seo-audit')echo $reports->seo();
+    else echo $reports->overview();
+    exit(0);
+}
+
 if (in_array($command, ['delivery-status','review-impact','review-scenarios','review-run','review-assess','change-risk','deployment-readiness','release-summary'], true)) {
     try {
         $root=dirname(__DIR__); $inspector=new \Harbor\DigitalBankingLab\Delivery\GitRepositoryInspector($root); $git=$inspector->inspect();
