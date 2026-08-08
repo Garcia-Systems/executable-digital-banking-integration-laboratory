@@ -19,6 +19,8 @@ jobs:
       - run: npm install --no-audit --no-fund
         working-directory: apps/member-web
       - run: ./bin/verify
+      - run: ./bin/digital-banking-lab run-capstone
+      - run: php tests/Capstone/run.php
       - run: ./bin/digital-banking-lab architecture-check
       - run: ./bin/digital-banking-lab security-check
       - run: ./bin/digital-banking-lab api-data-check
