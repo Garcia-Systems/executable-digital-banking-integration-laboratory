@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { HarborApiClient, HarborApiError } from '../src/api';
+import { HarborApiClient, HarborApiError, NetworkError, RequestAbortedError } from '../src/api';
 import { ContractError } from '../src/contracts';
 import { memberFixture } from './fixture';
 
@@ -10,6 +10,12 @@ describe('HarborApiClient', () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(memberFixture));
     await new HarborApiClient('http://api.test/', fetcher).getMember('member/one');
     expect(fetcher).toHaveBeenCalledWith('http://api.test/api/members/member%2Fone', expect.objectContaining({ method: 'GET' }));
+  });
+  it('passes the caller AbortSignal to fetch', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(memberFixture));
+    const controller = new AbortController();
+    await new HarborApiClient('', fetcher).getMember('member-0001', controller.signal);
+    expect(fetcher).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ signal: controller.signal }));
   });
   it('returns parsed member data', async () => {
     const client = new HarborApiClient('http://api.test', vi.fn<typeof fetch>().mockResolvedValue(response(memberFixture)));
@@ -29,5 +35,12 @@ describe('HarborApiClient', () => {
   it('fails explicitly for malformed successful JSON', async () => {
     const malformed = new Response('{not-json', { status: 200 });
     await expect(new HarborApiClient('', vi.fn<typeof fetch>().mockResolvedValue(malformed)).getMember('member-0001')).rejects.toBeInstanceOf(ContractError);
+  });
+  it('distinguishes transport failure from cancellation', async () => {
+    const failure = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('browser details'));
+    await expect(new HarborApiClient('', failure).getMember('member-0001')).rejects.toBeInstanceOf(NetworkError);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(new HarborApiClient('', failure).getMember('member-0001', controller.signal)).rejects.toBeInstanceOf(RequestAbortedError);
   });
 });
