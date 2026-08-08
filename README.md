@@ -44,7 +44,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 11: Data-Driven Development](chapters/11-data-driven-development.md) turns those relational facts into explicit derived metrics and explainable Harbor decisions through an activity policy, profile, and operational review. See the [data-driven development diagram](diagrams/data-driven-development.md).
 
-The progression is deliberate: Chapter 0 maps the **system landscape**; Chapter 1 supplies a **deterministic laboratory**; Chapter 2 defines the **Harbor domain**; Chapter 3 establishes the **vendor boundary**; Chapter 4 defines the **Harbor REST API**; Chapter 5 adds **vendor REST integration**; Chapter 6 adds **legacy SOAP integration**; Chapter 7 extracts **ports and adapters**; Chapter 8 adds **unified failure handling**; Chapter 9 adds **PHP application orchestration**; Chapter 10 adds **SQL and relational facts**; and Chapter 11 adds **data-driven application decisions**.
+[Chapter 12: Building the Member Web Experience](chapters/12-member-web-experience.md) adds a mobile-first HTML/CSS/TypeScript frontend that validates and renders Harbor's public member API through explicit loading, loaded, empty, and safe error states. Vendor complexity stays behind the backend boundary. See the [Member Web experience diagram](diagrams/member-web-experience.md).
+
+The progression is deliberate: Chapter 0 maps the **system landscape**; Chapter 1 supplies a **deterministic laboratory**; Chapter 2 defines the **Harbor domain**; Chapter 3 establishes the **vendor boundary**; Chapter 4 defines the **Harbor REST API**; Chapter 5 adds **vendor REST integration**; Chapter 6 adds **legacy SOAP integration**; Chapter 7 extracts **ports and adapters**; Chapter 8 adds **unified failure handling**; Chapter 9 adds **PHP application orchestration**; Chapter 10 adds **SQL**; Chapter 11 adds **data-driven development**; and Chapter 12 adds the **Member Web frontend**.
 
 ## Requirements and installation
 
@@ -195,6 +197,23 @@ php tests/run.php
 composer test
 ```
 
+## Member Web
+
+Run the backend API and frontend in separate terminals:
+
+```bash
+php -S 127.0.0.1:8080 -t public
+```
+
+```bash
+cd apps/member-web
+npm install
+npm test
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`; the API is at `http://127.0.0.1:8080`. The expected page welcomes fictional member Avery Morgan and shows Everyday Checking and Primary Savings. Use `npm run typecheck` and `npm run build` for frontend verification. PHP and Node test suites remain intentionally separate.
+
 ## Repository map
 
 ```text
@@ -207,11 +226,11 @@ src/Application/ Use cases and output rendering
 tests/        Dependency-free executable architecture tests
 ```
 
-Future chapters will extend these same boundaries rather than replacing them. Chapter 12 will build the **Member Web experience consuming Harbor APIs with HTML, CSS, JavaScript, and TypeScript**.
+Future chapters will extend these same boundaries rather than replacing them. Chapter 13 will focus on **frontend request state, resilience, and API consumption patterns**.
 
 ## Roadmap
 
-Chapters 0 through 11 are implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0 through 12 are implemented. The remaining entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -225,8 +244,8 @@ Chapters 0 through 11 are implemented. The remaining entries describe direction,
 10. **PHP application services** — orchestrate domain work and integrations (Chapter 9 — implemented)
 11. **SQL for digital banking** — MySQL-oriented schemas and queries (Chapter 10 — implemented)
 12. **Data-driven development** — relational facts interpreted by explicit application policy (Chapter 11 — implemented)
-13. **Member Web** — Harbor API consumption with HTML, CSS, JavaScript, and TypeScript (Chapter 12 — next)
-14. **Frontend state and API consumption** — JavaScript and TypeScript clients
+13. **Member Web** — Harbor API consumption with HTML, CSS, and TypeScript (Chapter 12 — implemented)
+14. **Frontend request state, resilience, and API consumption patterns** — Chapter 13
 15. **Digital self-service workflows** — usable navigation and safe conversions
 16. **Third-party fintech integration** — capability and risk evaluation
 17. **Secure input validation** — trust boundaries and defensive handling

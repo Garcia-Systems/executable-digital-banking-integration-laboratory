@@ -1,1 +1,3 @@
 /vendor/
+/apps/member-web/node_modules/
+/apps/member-web/dist/
