@@ -6,8 +6,9 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "noEmit": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vitest/globals"]
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "ESNext.Disposable"],
+    "types": ["node", "vitest/globals"],
+    "skipLibCheck": true
   },
   "include": ["src", "tests", "vite.config.ts"]
 }
