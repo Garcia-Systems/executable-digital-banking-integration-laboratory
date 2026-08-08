@@ -13,8 +13,10 @@ use Harbor\DigitalBankingLab\Domain\Member\MemberId;
 use Harbor\DigitalBankingLab\Fixtures\HarborEcosystemFixture;
 use Harbor\DigitalBankingLab\Fixtures\LaboratoryFixtureFactory;
 use Harbor\DigitalBankingLab\Fixtures\MemberFixtureFactory;
+use Harbor\DigitalBankingLab\Infrastructure\Http\DeterministicHttpClient;
 use Harbor\DigitalBankingLab\Integration\{UnknownVendorIdentity, VendorIdentityMap, VendorTranslationException};
-use Harbor\DigitalBankingLab\Integration\Northstar\{DeterministicNorthstarClient, NorthstarDigitalBankingAdapter, NorthstarTranslator};
+use Harbor\DigitalBankingLab\Integration\Northstar\{DeterministicNorthstarClient, NorthstarDigitalBankingAdapter, NorthstarRestClient, NorthstarTranslator};
+use Harbor\DigitalBankingLab\Integration\Northstar\Exception\{NorthstarCustomerNotFound, NorthstarHttpFailure, NorthstarResponseDecodingFailure, NorthstarTransportFailure};
 
 $command = $argv[1] ?? null;
 $renderer = new EcosystemRenderer();
@@ -39,6 +41,32 @@ if ($command === 'member') {
         exit(0);
     } catch (InvalidArgumentException $error) {
         fwrite(STDERR, $error->getMessage() . "\n");
+        exit(1);
+    }
+}
+if ($command === 'vendor-rest') {
+    $memberIdentifier = $argv[2] ?? null;
+    if ($memberIdentifier === null) { fwrite(STDERR, "A member identifier is required.\n"); exit(1); }
+    $scenario = 'normal';
+    foreach (array_slice($argv, 3) as $argument) {
+        if (str_starts_with($argument, '--scenario=')) $scenario = substr($argument, strlen('--scenario='));
+    }
+    try {
+        $memberId = new MemberId($memberIdentifier);
+        $identities = VendorIdentityMap::laboratory();
+        $customerKey = $identities->northstarCustomerFor($memberId);
+        $http = new DeterministicHttpClient($scenario, dirname(__DIR__) . '/fixtures/northstar');
+        $client = new NorthstarRestClient($http, 'https://northstar.invalid');
+        $member = (new NorthstarDigitalBankingAdapter($client, $identities, new NorthstarTranslator()))->findMember($memberId);
+        $request = $http->requests()[0];
+        $total = array_reduce($member->accounts, fn ($sum, $account) => $sum->add($account->balance), \Harbor\DigitalBankingLab\Domain\Member\Money::usd(0));
+        echo "NORTHSTAR REST DIAGNOSTIC — NOT MEMBER-FACING OUTPUT\n\n";
+        echo "Harbor Member: {$memberId->value}\nVendor Customer: {$customerKey->value}\n";
+        echo "Request: {$request['method']} " . parse_url($request['url'], PHP_URL_PATH) . "\nHTTP Status: 200\n";
+        echo "Decoded Vendor Customer: {$customerKey->value}\nTranslated Harbor Member: {$member->name}\nTotal displayed balance: {$total->format()}\n";
+        exit(0);
+    } catch (NorthstarCustomerNotFound|NorthstarHttpFailure|NorthstarResponseDecodingFailure|NorthstarTransportFailure|UnknownVendorIdentity|VendorTranslationException|InvalidArgumentException $error) {
+        fwrite(STDERR, get_class($error) . ': ' . $error->getMessage() . "\n");
         exit(1);
     }
 }
@@ -99,5 +127,5 @@ if ($command === 'laboratory' || $command === 'determinism') {
     }
 }
 
-fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID>\n");
+fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID>\n");
 exit(1);

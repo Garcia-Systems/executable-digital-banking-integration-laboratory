@@ -8,7 +8,7 @@ use Harbor\DigitalBankingLab\Integration\VendorIdentityMap;
 
 final readonly class NorthstarDigitalBankingAdapter implements DigitalBankingGateway
 {
-    public function __construct(private DeterministicNorthstarClient $client, private VendorIdentityMap $identities, private NorthstarTranslator $translator) {}
+    public function __construct(private NorthstarClient $client, private VendorIdentityMap $identities, private NorthstarTranslator $translator) {}
 
     public function findMember(MemberId $memberId): Member
     {

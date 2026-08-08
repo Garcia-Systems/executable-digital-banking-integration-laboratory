@@ -1,0 +1,9 @@
+{
+  "customerKey": "NS-CUST-4417",
+  "customerStatus": "ENABLED",
+  "fullName": "Avery Morgan",
+  "products": [
+    {"productKey":"NS-PROD-9001","productClass":"DDA","nickname":"Everyday Checking","currentBalanceCents":245075,"state":"ACTIVE"},
+    {"productKey":"NS-PROD-9002","productClass":"SAV","nickname":"Primary Savings","currentBalanceCents":812000,"state":"ACTIVE"}
+  ]
+}

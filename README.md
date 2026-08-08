@@ -30,7 +30,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 4: Designing Harbor's REST API](chapters/04-rest-api-fundamentals.md) exposes a read-only Harbor-owned Member Summary through a thin HTTP boundary, transport-independent application service, explicit presenter, and stable error contract. See the [REST API diagram](diagrams/harbor-rest-api.md).
 
-The progression is deliberate: Chapter 0 maps the **system landscape**, Chapter 1 supplies **controlled deterministic infrastructure**, Chapter 2 defines the **Harbor internal member domain**, Chapter 3 establishes the **vendor/domain boundary**, and Chapter 4 defines a **Harbor-owned REST API**.
+[Chapter 5: Consuming a Vendor REST API](chapters/05-consuming-vendor-rest-apis.md) adds a deterministic HTTP transport, strict Northstar REST client, typed failure taxonomy, and REST-backed application composition while preserving Harbor's public contract. See the [vendor REST integration diagram](diagrams/vendor-rest-integration.md).
+
+The progression is deliberate: Chapter 0 maps the **system landscape**, Chapter 1 supplies **controlled deterministic infrastructure**, Chapter 2 defines the **Harbor internal member domain**, Chapter 3 establishes the **vendor semantic boundary**, Chapter 4 defines a **Harbor-owned REST API**, and Chapter 5 adds **vendor REST transport**. Harbor can now expose its own REST API while consuming a separate vendor REST API behind that contract.
 
 ## Requirements and installation
 
@@ -96,6 +98,19 @@ Translate the same member through Northstar, inspect the explicitly separate ide
 ./bin/digital-banking-lab compare-member member-0001
 ```
 
+Inspect Chapter 5's deterministic vendor REST request and representative scenarios:
+
+```bash
+./bin/digital-banking-lab vendor-rest member-0001
+./bin/digital-banking-lab vendor-rest member-0001 --scenario=vendor-timeout
+./bin/digital-banking-lab vendor-rest member-0001 --scenario=vendor-unavailable
+./bin/digital-banking-lab vendor-rest member-0001 --scenario=customer-not-found
+./bin/digital-banking-lab vendor-rest member-0001 --scenario=vendor-error
+./bin/digital-banking-lab vendor-rest member-0001 --scenario=malformed-json
+./bin/digital-banking-lab vendor-rest member-0001 --scenario=incomplete-response
+./bin/digital-banking-lab vendor-rest member-0001 --scenario=unsupported-product
+```
+
 Start the Chapter 4 local API, then request success and representative errors from another terminal:
 
 ```bash
@@ -127,18 +142,18 @@ src/Application/ Use cases and output rendering
 tests/        Dependency-free executable architecture tests
 ```
 
-Future chapters will extend these same boundaries rather than replacing them. Chapter 5 reverses the direction: **instead of Harbor exposing an API, Harbor will consume a vendor REST API**. Chapter 5 is not implemented here.
+Future chapters will extend these same boundaries rather than replacing them. The next chapter introduces a different integration style: **SOAP and legacy banking integrations**. Chapter 6 is not implemented here.
 
 ## Roadmap
 
-Chapters 0 through 4 are implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0 through 5 are implemented. The remaining entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
 3. **Member domain modeling** — safe fictional member and account value objects (Chapter 2 — implemented)
 4. **Vendor platform boundaries** — contracts and division of responsibility (Chapter 3 — implemented)
 5. **REST API fundamentals** — resources, methods, status codes, and schemas (Chapter 4 — implemented)
-6. **Consuming vendor REST APIs** — deterministic vendor API clients
+6. **Consuming vendor REST APIs** — deterministic vendor API clients (Chapter 5 — implemented)
 7. **SOAP and legacy banking integrations** — envelopes, contracts, and translation
 8. **Integration adapters** — isolate protocols from application behavior
 9. **Vendor failure handling** — timeouts, retries, idempotency, and safe degradation
