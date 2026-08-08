@@ -54,7 +54,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 16: Secure Input Validation and Trust Boundaries](chapters/16-secure-input-validation.md) makes browser, vendor, legacy, database, presentation, and configuration trust boundaries explicit. It adds layered request checks, bounded safe XML parsing, sensitivity metadata, output-safety regressions, and deterministic security teaching commands. See the [trust-boundary diagram](diagrams/trust-boundaries.md).
 
-The progression is deliberate: Chapter 14 accepts a validated self-service request, Chapter 15 composes an external fintech capability, and Chapter 16 demonstrates that every external boundary remains untrusted until validated. Chapter 17 will focus on **protecting sensitive member and financial data across application layers**; it is not implemented here.
+[Chapter 17: Protecting Sensitive Member and Financial Data](chapters/17-protecting-sensitive-data.md) adds deterministic classification and flow inventories, least-knowledge gateway reviews, intentional API exposure checks, whitelisted operational events, and browser persistence/URL regressions. See the [sensitive-data-flow diagram](diagrams/sensitive-data-flow.md).
+
+The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves. Chapter 18 will focus on **automated unit testing as an engineering discipline across Harbor's domain, application, integration, and frontend layers**; it is not implemented here.
 
 ## Requirements and installation
 
@@ -234,7 +236,7 @@ src/Application/ Use cases and output rendering
 tests/        Dependency-free executable architecture tests
 ```
 
-Chapter 12 renders Harbor data; Chapter 13 manages asynchronous reads safely; Chapter 14 submits a validated self-service workflow. Chapter 15 will focus on **third-party fintech integration inside a member workflow** and is not implemented here.
+Chapter 12 renders Harbor data; Chapter 13 manages asynchronous reads safely; Chapter 14 submits a validated self-service workflow; Chapters 15–17 add fintech integration, trust-boundary validation, and sensitive-data minimization.
 
 Transfer preview example:
 
@@ -246,7 +248,7 @@ curl -i -X POST http://127.0.0.1:8080/api/members/member-0001/transfer-preview \
 
 ## Roadmap
 
-Chapters 0 through 16 are implemented. Later entries describe direction, not existing chapters.
+Chapters 0 through 17 are implemented. Later entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -265,8 +267,8 @@ Chapters 0 through 16 are implemented. Later entries describe direction, not exi
 15. **Digital self-service workflows and form validation** — Chapter 14 — implemented
 16. **Third-party fintech integration** — capability and risk evaluation (Chapter 15 — implemented)
 17. **Secure input validation** — trust boundaries and defensive handling (Chapter 16 — implemented)
-18. **Protecting financial data** — minimization, masking, and safe logging (Chapter 17 — next)
-19. **Unit testing** — fast tests around domain and application behavior
+18. **Protecting financial data** — minimization, masking, and safe logging (Chapter 17 — implemented)
+19. **Unit testing** — fast tests around domain and application behavior (Chapter 18 — next)
 20. **Integration testing** — deterministic tests at system boundaries
 21. **Full-stack debugging** — trace failures across browser, services, and adapters
 22. **Git and code-review workflows** — reviewable changes and delivery discipline
@@ -285,7 +287,14 @@ This repository demonstrates secure coding concepts. It is not a production bank
 ./bin/digital-banking-lab trust-boundaries
 ./bin/digital-banking-lab validation-path transfer-preview
 ./bin/digital-banking-lab security-check
+./bin/digital-banking-lab data-inventory
+./bin/digital-banking-lab data-flow transfer-preview
+./bin/digital-banking-lab api-data-check
 ```
+
+### Sensitive Data Scope
+
+All repository data is fictional, and real member data must not be added. Chapter 17 demonstrates minimization, least knowledge, safe diagnostics, and intentional exposure; it is not a regulatory or compliance implementation. Member financial DTOs remain runtime-only in Member Web, vendor identifiers remain behind adapters, and vendor credentials belong only in transport/client infrastructure. Authentication, authorization, production secret management, encryption guarantees, and formal retention controls remain out of scope.
 
 For transfer-preview requests, `400` identifies malformed JSON/shape, `413` an over-64-KiB body, `415` a non-JSON content type, and `422` syntactically valid input with invalid field values.
 

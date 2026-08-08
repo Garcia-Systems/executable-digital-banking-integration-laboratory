@@ -8,14 +8,25 @@ use Harbor\DigitalBankingLab\Domain\Member\{Account, AccountStatus};
 final readonly class PreviewTransfer
 {
     private MemberVerificationGateway $verification;
+    private OperationalEventRecorder $events;
     public function __construct(
         private DigitalBankingGateway $digitalBanking,
         private AccountBalanceGateway $balances,
         private IdGenerator $ids,
         ?MemberVerificationGateway $verification=null,
-    ) { $this->verification=$verification??new AlwaysVerifiedMemberGateway(); }
+        ?OperationalEventRecorder $events=null,
+    ) { $this->verification=$verification??new AlwaysVerifiedMemberGateway(); $this->events=$events??new NullOperationalEventRecorder(); }
 
     public function execute(PreviewTransferCommand $command): TransferPreview
+    {
+        try { return $this->preview($command); }
+        catch (IntegrationFailure $failure) {
+            $this->events->recordIntegrationFailure(IntegrationFailureEvent::fromFailure($failure));
+            throw $failure;
+        }
+    }
+
+    private function preview(PreviewTransferCommand $command): TransferPreview
     {
         $member = $this->digitalBanking->findMember($command->memberId);
         $source = $this->account($member->accounts, $command->sourceAccountId->value, 'sourceAccountId', 'Source');

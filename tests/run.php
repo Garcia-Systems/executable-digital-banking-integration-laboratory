@@ -831,6 +831,54 @@ $test('Chapter 16 trust-boundary metadata is deterministic',function()use($asser
     $catalog=new \Harbor\DigitalBankingLab\Security\TrustBoundaryCatalog();$assert(count($catalog->all())===7);$assert($catalog->render()===$catalog->render());
 });
 
+$test('Chapter 17 data inventory classifies representative elements deterministically',function()use($assert):void{
+    $inventory=new \Harbor\DigitalBankingLab\Security\DataInventory();$items=$inventory->all();
+    $classes=array_unique(array_map(static fn($item)=>$item->classification->value,$items));sort($classes);
+    $assert($classes===['INTERNAL','MEMBER_SENSITIVE','PUBLIC','SECRET']);
+    $byName=[];foreach($items as $item)$byName[$item->name]=$item;
+    $assert($byName['member.display_name']->classification===\Harbor\DigitalBankingLab\Security\DataSensitivity::MEMBER_SENSITIVE);
+    $assert($byName['northstar.customer_key']->publicApi==='no'&&$byName['vendor.api_token']->classification===\Harbor\DigitalBankingLab\Security\DataSensitivity::SECRET);
+    $assert($inventory->render()===$inventory->render());
+});
+
+$test('Chapter 17 flow descriptors record representation changes without driving behavior',function()use($assert):void{
+    $catalog=new \Harbor\DigitalBankingLab\Security\SensitiveDataFlowCatalog();$assert(count($catalog->all())===4);
+    $flow=$catalog->find('transfer-preview');$assert($flow!==null&&count($flow->steps)===6);
+    $rendered=$catalog->renderTransferPreview();foreach(['memo sent: NO','transfer amount sent: NO','destination account sent: NO','account balances sent: NO'] as $line)$assert(str_contains($rendered,$line));
+});
+
+$test('Chapter 17 public API projections intentionally expose Harbor data and omit vendor data',function()use($assert):void{
+    $router=HttpKernelFactory::create();$bodies=[
+        $router->dispatch('GET','/api/members/member-0001')->body,
+        $router->dispatch('GET','/api/members/member-0001/financial-overview')->body,
+        $router->dispatch('GET','/api/members/member-0001/activity')->body,
+        $router->dispatch('GET','/api/members/member-0001/verification')->body,
+    ];
+    $joined=implode("\n",$bodies);$assert(str_contains($joined,'member-0001')&&str_contains($joined,'account-0001')&&str_contains($joined,'minorUnits'));
+    foreach(['NS-CUST-4417','NS-PROD','HC-100045','CV-SUBJECT-7101','CV-REF-90001','laboratory-token','rawResponse','diagnosticCode'] as $forbidden)$assert(!str_contains($joined,$forbidden),"Public API leaked {$forbidden}");
+});
+
+$test('Chapter 17 operational events whitelist useful fields and omit sensitive context',function()use($assert):void{
+    $recorder=new \Harbor\DigitalBankingLab\Application\InMemoryOperationalEventRecorder();
+    $failure=null;try{(new LaboratoryApplicationFactory(dirname(__DIR__)))->previewTransfer(heritageScenario:'temporary-unavailable')->execute(new \Harbor\DigitalBankingLab\Application\PreviewTransferCommand(new MemberId('member-0001'),new AccountId('account-0001'),new AccountId('account-0002'),Money::usd(50000),'Rent for Avery Morgan'));}catch(IntegrationFailure $caught){$failure=$caught;}
+    $assert($failure instanceof IntegrationFailure);
+    $recorder->recordIntegrationFailure(\Harbor\DigitalBankingLab\Application\IntegrationFailureEvent::fromFailure($failure));$output=$recorder->render();
+    foreach(['External system:','Operation:','Category:','Retry:','Diagnostic code:'] as $allowed)$assert(str_contains($output,$allowed));
+    foreach(['Avery Morgan','$2,450.75','$500.00','Rent for Avery Morgan','NS-CUST-4417','HC-100045','CV-SUBJECT-7101','CV-REF-90001','laboratory-token','<soap','{"'] as $forbidden)$assert(!str_contains($output,$forbidden),"Diagnostic leaked {$forbidden}");
+});
+
+$test('Chapter 17 transfer orchestration shares only capability-specific identifiers',function()use($assert):void{
+    $member=MemberFixtureFactory::find(new MemberId('member-0001'));
+    $digital=new class($member) implements DigitalBankingGateway {public array $calls=[];public function __construct(private Member $member){}public function findMember(MemberId $id):Member{$this->calls[]=$id;return $this->member;}};
+    $balances=new class implements AccountBalanceGateway {public array $calls=[];public function accountBalanceDetails(AccountId $id):AccountBalanceDetails{$this->calls[]=$id;return new AccountBalanceDetails($id,Money::usd(250000),Money::usd(245075),AccountStatus::OPEN);}};
+    $verification=new class implements \Harbor\DigitalBankingLab\Application\MemberVerificationGateway {public array $calls=[];public function verificationFor(MemberId $id):\Harbor\DigitalBankingLab\Application\MemberVerificationResult{$this->calls[]=$id;return new \Harbor\DigitalBankingLab\Application\MemberVerificationResult($id,\Harbor\DigitalBankingLab\Application\VerificationStatus::VERIFIED);}};
+    $preview=(new \Harbor\DigitalBankingLab\Application\PreviewTransfer($digital,$balances,new SequenceIdGenerator('preview-'),$verification))->execute(new \Harbor\DigitalBankingLab\Application\PreviewTransferCommand(new MemberId('member-0001'),new AccountId('account-0001'),new AccountId('account-0002'),Money::usd(50000),'Private memo'));
+    $assert(count($digital->calls)===1&&$digital->calls[0] instanceof MemberId);
+    $assert(count($verification->calls)===1&&$verification->calls[0] instanceof MemberId);
+    $assert(count($balances->calls)===1&&$balances->calls[0]->value==='account-0001');
+    foreach(['reference','subjectId','accountNumber','productKey','diagnosticCode'] as $field)$assert(!property_exists($preview,$field));
+});
+
 $failures = 0;
 foreach ($tests as $name => $body) {
     try { $body(); echo "PASS {$name}\n"; }

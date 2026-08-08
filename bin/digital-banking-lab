@@ -33,6 +33,40 @@ use Harbor\DigitalBankingLab\Application\{ActivityPolicy,FindMembersForActivityR
 
 $command = $argv[1] ?? null;
 
+if ($command === 'data-inventory') { echo (new \Harbor\DigitalBankingLab\Security\DataInventory())->render(); exit(0); }
+if ($command === 'data-flow') {
+    if (($argv[2] ?? '') !== 'transfer-preview') { fwrite(STDERR, "Unknown data flow.\n"); exit(1); }
+    echo (new \Harbor\DigitalBankingLab\Security\SensitiveDataFlowCatalog())->renderTransferPreview(); exit(0);
+}
+if ($command === 'api-data-check') {
+    $router=\Harbor\DigitalBankingLab\Http\HttpKernelFactory::create();
+    $member=$router->dispatch('GET','/api/members/member-0001')->body;
+    $verification=$router->dispatch('GET','/api/members/member-0001/verification')->body;
+    $request=json_encode(['sourceAccountId'=>'account-0001','destinationAccountId'=>'account-0002','amount'=>['currency'=>'USD','minorUnits'=>50000],'memo'=>'Teaching preview'],JSON_THROW_ON_ERROR);
+    $preview=$router->dispatch('POST','/api/members/member-0001/transfer-preview',$request)->body;
+    $absent=static fn(string $body,array $terms):bool=>array_reduce($terms,static fn(bool $safe,string $term):bool=>$safe&&!str_contains(strtolower($body),strtolower($term)),true);
+    $checks=[
+        'Member summary'=>[
+            'Harbor MemberId exposed intentionally'=>str_contains($member,'member-0001'),
+            'Harbor AccountId exposed intentionally'=>str_contains($member,'account-0001'),
+            'vendor customer IDs absent'=>$absent($member,['NS-CUST-4417']),
+            'vendor account IDs absent'=>$absent($member,['NS-PROD','HC-100045']),
+            'secrets absent'=>$absent($member,['laboratory-token','bearer']),
+        ],
+        'Verification'=>[
+            'Harbor verification status exposed'=>str_contains($verification,'verified'),
+            'ClearVerify subject ID absent'=>$absent($verification,['CV-SUBJECT']),
+            'provider reference absent'=>$absent($verification,['CV-REF']),
+        ],
+        'Transfer preview'=>[
+            'amount exposed as required'=>str_contains($preview,'50000'),
+            'available/projected balances exposed as required'=>str_contains($preview,'sourceAvailableBalance')&&str_contains($preview,'projectedAvailableBalance'),
+            'vendor diagnostics absent'=>$absent($preview,['Northstar','Heritage','ClearVerify','diagnosticCode','NS-','HC-','CV-']),
+        ],
+    ];
+    $pass=true; echo "Public API Data Exposure\n\n"; foreach($checks as $section=>$items){echo "{$section}:\n";foreach($items as $label=>$ok){$pass=$pass&&$ok;echo '['.($ok?'PASS':'FAIL')."] {$label}\n";}echo "\n";}echo 'Result: '.($pass?'PASS':'FAIL')."\n\nEducational inspection only; this is not a security certification.\n";exit($pass?0:1);
+}
+
 if ($command === 'trust-boundaries') { echo (new \Harbor\DigitalBankingLab\Security\TrustBoundaryCatalog())->render(); exit(0); }
 if ($command === 'validation-path') {
     if (($argv[2] ?? '') !== 'transfer-preview') { fwrite(STDERR,"Unknown validation path.\n"); exit(1); }
