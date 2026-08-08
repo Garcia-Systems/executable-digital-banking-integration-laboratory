@@ -25,7 +25,7 @@ use Harbor\DigitalBankingLab\Http\HttpKernelFactory;
 use Harbor\DigitalBankingLab\Infrastructure\Http\DeterministicHttpClient;
 use Harbor\DigitalBankingLab\Integration\Northstar\NorthstarRestClient;
 use Harbor\DigitalBankingLab\Integration\Northstar\Exception\{NorthstarCustomerNotFound, NorthstarHttpFailure, NorthstarResponseDecodingFailure, NorthstarTimeoutFailure, NorthstarUnavailableFailure};
-use Harbor\DigitalBankingLab\Application\{AccountBalanceGateway, GetAccountBalanceDetails, IntegrationCatalog, IntegrationDescriptor};
+use Harbor\DigitalBankingLab\Application\{AccountBalanceGateway, FailureMatrixRenderer, FailureScenarioLaboratory, GetAccountBalanceDetails, IntegrationCatalog, IntegrationDescriptor, IntegrationFailure, IntegrationFailureCategory, IntegrationFailureReport, RetryDisposition};
 use Harbor\DigitalBankingLab\Architecture\ArchitectureInspector;
 use Harbor\DigitalBankingLab\Composition\LaboratoryApplicationFactory;
 use Harbor\DigitalBankingLab\Domain\Member\AccountBalanceDetails;
@@ -33,6 +33,7 @@ use Harbor\DigitalBankingLab\Infrastructure\Soap\DeterministicHeritageSoapTransp
 use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, HeritageIdentityMap, HeritageSoapClient, HeritageSoapEnvelopeBuilder};
 use Harbor\DigitalBankingLab\Integration\Heritage\Exception\{HeritageAccountNotFound, HeritageCoreError, HeritageResponseDecodingFailure};
 use Harbor\DigitalBankingLab\Integration\Heritage\Model\{HeritageAccountDetails, HeritageAccountNumber};
+use Harbor\DigitalBankingLab\Api\IntegrationFailureApiMapper;
 
 $tests = [];
 $test = static function (string $name, callable $body) use (&$tests): void { $tests[$name] = $body; };
@@ -238,7 +239,7 @@ $test('Northstar adapter returns complete Harbor domain state', function () use 
 
 $test('unsupported Northstar values fail at translation boundary', function () use ($assert, $northstarGateway): void {
     try { $northstarGateway('northstar-unsupported-product')->findMember(new MemberId('member-0001')); $assert(false); }
-    catch (VendorTranslationException $error) { $assert($error->getMessage() === 'Unsupported Northstar productClass: MMA'); }
+    catch (IntegrationFailure $error) { $assert($error->category === IntegrationFailureCategory::UNSUPPORTED_EXTERNAL_VALUE); }
     $assert(array_column(AccountType::cases(), 'value') === ['CHECKING', 'SAVINGS']);
 });
 
@@ -368,7 +369,7 @@ $test('Northstar adapter works through REST while preserving Harbor identities a
 $test('unsupported REST product remains a semantic translation failure', function () use ($assert, $restClient): void {
     $gateway = new NorthstarDigitalBankingAdapter($restClient('unsupported-product'), VendorIdentityMap::laboratory(), new NorthstarTranslator());
     try { $gateway->findMember(new MemberId('member-0001')); $assert(false); }
-    catch (VendorTranslationException $error) { $assert($error->getMessage() === 'Unsupported Northstar productClass: MMA'); }
+    catch (IntegrationFailure $error) { $assert($error->category === IntegrationFailureCategory::UNSUPPORTED_EXTERNAL_VALUE); }
 });
 
 $test('REST-backed Harbor API preserves the Chapter 4 contract and hides vendor transport', function () use ($assert): void {
@@ -437,7 +438,7 @@ $test('Heritage adapter translates to focused Harbor values without leakage', fu
 $test('Heritage adapter rejects unsupported status and currency', function () use ($assert, $heritageClient): void {
     foreach (['unsupported-status' => 'AccountStatus', 'unsupported-currency' => 'CurrencyCode'] as $scenario => $word) {
         try { (new HeritageCoreBankingAdapter($heritageClient($scenario), HeritageIdentityMap::laboratory()))->accountBalanceDetails(new AccountId('account-0001')); $assert(false); }
-        catch (VendorTranslationException $error) { $assert(str_contains($error->getMessage(), $word)); }
+        catch (IntegrationFailure $error) { $assert($error->category === IntegrationFailureCategory::UNSUPPORTED_EXTERNAL_VALUE && str_contains($error->diagnosticCode, strtoupper(str_replace('AccountStatus', 'STATUS', str_replace('CurrencyCode', 'CURRENCY', $word))))); }
     }
 });
 
@@ -510,6 +511,54 @@ $test('Chapter 7 architecture inspection rules pass', function () use ($assert):
     $inspection = new ArchitectureInspector(dirname(__DIR__) . '/src');
     $assert(count($inspection->checks()) === 6);
     $assert($inspection->passes(), $inspection->render());
+});
+
+$test('Chapter 8 taxonomy and laboratory retry rules are explicit', function () use ($assert): void {
+    $assert(array_column(IntegrationFailureCategory::cases(), 'value') === ['NOT_FOUND', 'TEMPORARY_UNAVAILABLE', 'TIMEOUT', 'EXTERNAL_ERROR', 'INVALID_EXTERNAL_RESPONSE', 'UNSUPPORTED_EXTERNAL_VALUE']);
+    $assert(array_column(RetryDisposition::cases(), 'value') === ['RETRYABLE', 'NOT_RETRYABLE', 'UNKNOWN']);
+    $laboratory = new FailureScenarioLaboratory(new LaboratoryApplicationFactory(dirname(__DIR__)));
+    $assert($laboratory->run('northstar-timeout')->retryDisposition === RetryDisposition::RETRYABLE);
+    foreach (['northstar-not-found', 'northstar-malformed-json', 'northstar-unsupported-product'] as $scenario) $assert($laboratory->run($scenario)->retryDisposition === RetryDisposition::NOT_RETRYABLE);
+});
+
+$test('Northstar failures are translated explicitly before leaving its adapter', function () use ($assert): void {
+    $laboratory = new FailureScenarioLaboratory(new LaboratoryApplicationFactory(dirname(__DIR__)));
+    $expected = [
+        'northstar-timeout' => IntegrationFailureCategory::TIMEOUT, 'northstar-unavailable' => IntegrationFailureCategory::TEMPORARY_UNAVAILABLE,
+        'northstar-not-found' => IntegrationFailureCategory::NOT_FOUND, 'northstar-http-error' => IntegrationFailureCategory::EXTERNAL_ERROR,
+        'northstar-malformed-json' => IntegrationFailureCategory::INVALID_EXTERNAL_RESPONSE, 'northstar-incomplete-response' => IntegrationFailureCategory::INVALID_EXTERNAL_RESPONSE,
+        'northstar-unsupported-product' => IntegrationFailureCategory::UNSUPPORTED_EXTERNAL_VALUE,
+    ];
+    foreach ($expected as $scenario => $category) { $failure = $laboratory->run($scenario); $assert($failure::class === IntegrationFailure::class && $failure->category === $category); }
+});
+
+$test('Heritage failures are translated explicitly before leaving its adapter', function () use ($assert): void {
+    $laboratory = new FailureScenarioLaboratory(new LaboratoryApplicationFactory(dirname(__DIR__)));
+    $expected = [
+        'heritage-account-not-found' => IntegrationFailureCategory::NOT_FOUND, 'heritage-core-error' => IntegrationFailureCategory::EXTERNAL_ERROR,
+        'heritage-malformed-xml' => IntegrationFailureCategory::INVALID_EXTERNAL_RESPONSE, 'heritage-incomplete-response' => IntegrationFailureCategory::INVALID_EXTERNAL_RESPONSE,
+        'heritage-unsupported-status' => IntegrationFailureCategory::UNSUPPORTED_EXTERNAL_VALUE, 'heritage-unsupported-currency' => IntegrationFailureCategory::UNSUPPORTED_EXTERNAL_VALUE,
+    ];
+    foreach ($expected as $scenario => $category) { $failure = $laboratory->run($scenario); $assert($failure::class === IntegrationFailure::class && $failure->category === $category); }
+});
+
+$test('public failure mapping is contextual, stable, and member safe', function () use ($assert): void {
+    $laboratory = new FailureScenarioLaboratory(new LaboratoryApplicationFactory(dirname(__DIR__))); $mapper = new IntegrationFailureApiMapper();
+    $expected = ['northstar-not-found' => [404, 'member_not_found'], 'heritage-account-not-found' => [404, 'account_not_found'], 'northstar-timeout' => [504, 'upstream_timeout'], 'northstar-unavailable' => [503, 'service_temporarily_unavailable'], 'northstar-malformed-json' => [502, 'upstream_invalid_response'], 'heritage-unsupported-status' => [502, 'upstream_invalid_response']];
+    foreach ($expected as $scenario => [$status, $code]) {
+        $mapping = $mapper->map($laboratory->run($scenario)); $json = json_encode($mapping['error']->toArray(), JSON_THROW_ON_ERROR);
+        $assert($mapping['status'] === $status && $mapping['error']->code === $code);
+        foreach (['Northstar', 'Heritage', 'SOAP', 'NORTHSTAR_', 'HERITAGE_', 'Avery Morgan', '245075', '<soap:', 'customerKey', 'Bearer', 'stack trace'] as $secret) $assert(!str_contains($json, $secret));
+    }
+});
+
+$test('operator diagnostics and failure matrix are complete and deterministic', function () use ($assert): void {
+    $laboratory = new FailureScenarioLaboratory(new LaboratoryApplicationFactory(dirname(__DIR__))); $reporter = new IntegrationFailureReport();
+    $first = $reporter->render('northstar-timeout', $laboratory->run('northstar-timeout'));
+    $assert($first === $reporter->render('northstar-timeout', $laboratory->run('northstar-timeout')));
+    foreach (['External system: Northstar Digital Banking', 'Harbor failure category: TIMEOUT', 'Retry disposition: RETRYABLE', 'Diagnostic code: NORTHSTAR_TIMEOUT', 'Public API mapping: 504 upstream_timeout'] as $line) $assert(str_contains($first, $line));
+    $matrix = (new FailureMatrixRenderer())->render($laboratory);
+    $assert(substr_count($matrix, "\n") === count(FailureScenarioLaboratory::SCENARIOS) + 2 && str_contains($matrix, 'heritage-unsupported-currency | UNSUPPORTED_EXTERNAL_VALUE | NOT_RETRYABLE | 502 | upstream_invalid_response'));
 });
 
 $failures = 0;

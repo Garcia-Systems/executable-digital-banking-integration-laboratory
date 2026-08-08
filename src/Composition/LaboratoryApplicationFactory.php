@@ -31,9 +31,9 @@ final readonly class LaboratoryApplicationFactory
         return new HeritageCoreBankingAdapter($client, HeritageIdentityMap::laboratory());
     }
 
-    public function getMemberSummary(bool $restBacked = true): GetMemberSummary
+    public function getMemberSummary(bool $restBacked = true, string $scenario = 'normal'): GetMemberSummary
     {
-        return new GetMemberSummary($this->digitalBankingGateway($restBacked));
+        return new GetMemberSummary($this->digitalBankingGateway($restBacked, $scenario));
     }
 
     public function getAccountBalanceDetails(): GetAccountBalanceDetails
