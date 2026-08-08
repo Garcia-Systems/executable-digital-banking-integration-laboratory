@@ -15,6 +15,7 @@ final class DeterministicHeritageSoapTransport implements SoapTransport
         if ($endpoint !== 'https://heritage-core.invalid/soap') throw new \InvalidArgumentException('Unexpected deterministic Heritage endpoint.');
         if ($soapAction !== 'urn:heritage-core/GetAccountDetails') throw new \InvalidArgumentException('Unexpected deterministic SOAP action.');
         if (!str_contains($xmlBody, '<her:GetAccountDetailsRequest>')) throw new \InvalidArgumentException('Unexpected deterministic SOAP request.');
+        if ($this->scenario === 'temporary-unavailable') return new SoapTransportResponse(503, '');
         if ($this->scenario === 'malformed-xml') return new SoapTransportResponse(200, '<soap:Envelope><broken>');
         if (in_array($this->scenario, ['account-not-found', 'soap-fault', 'core-error'], true)) {
             $code = $this->scenario === 'account-not-found' ? 'ACCOUNT_NOT_FOUND' : 'CORE_ERROR';
@@ -24,7 +25,9 @@ final class DeterministicHeritageSoapTransport implements SoapTransport
         $number = str_contains($xmlBody, 'HC-100046') ? 'HC-100046' : 'HC-100045';
         $status = $this->scenario === 'unsupported-status' ? 'DORMANT' : 'OPEN';
         $currency = $this->scenario === 'unsupported-currency' ? 'CAD' : 'USD';
-        $available = $this->scenario === 'incomplete-response' ? '' : "      <her:AvailableBalanceMinorUnits>238575</her:AvailableBalanceMinorUnits>\n";
+        $ledgerMinorUnits = $number === 'HC-100046' ? 812000 : 245075;
+        $availableMinorUnits = $number === 'HC-100046' ? 812000 : 238575;
+        $available = $this->scenario === 'incomplete-response' ? '' : "      <her:AvailableBalanceMinorUnits>{$availableMinorUnits}</her:AvailableBalanceMinorUnits>\n";
         $operation = $this->scenario === 'unexpected-operation' ? 'LookupAccountResponse' : 'GetAccountDetailsResponse';
         return new SoapTransportResponse(200, <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
@@ -33,7 +36,7 @@ final class DeterministicHeritageSoapTransport implements SoapTransport
     <her:{$operation}>
       <her:AccountNumber>{$number}</her:AccountNumber>
       <her:AccountStatus>{$status}</her:AccountStatus>
-      <her:LedgerBalanceMinorUnits>245075</her:LedgerBalanceMinorUnits>
+      <her:LedgerBalanceMinorUnits>{$ledgerMinorUnits}</her:LedgerBalanceMinorUnits>
 {$available}      <her:CurrencyCode>{$currency}</her:CurrencyCode>
     </her:{$operation}>
   </soap:Body>
