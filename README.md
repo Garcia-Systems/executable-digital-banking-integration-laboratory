@@ -56,7 +56,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 17: Protecting Sensitive Member and Financial Data](chapters/17-protecting-sensitive-data.md) adds deterministic classification and flow inventories, least-knowledge gateway reviews, intentional API exposure checks, whitelisted operational events, and browser persistence/URL regressions. See the [sensitive-data-flow diagram](diagrams/sensitive-data-flow.md).
 
-The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves. Chapter 18 will focus on **automated unit testing as an engineering discipline across Harbor's domain, application, integration, and frontend layers**; it is not implemented here.
+[Chapter 18: Automated Unit Testing as an Engineering Discipline](chapters/18-automated-unit-testing.md) makes useful test boundaries, handwritten Harbor fakes, deterministic fixtures, and behavior-focused assertions explicit and executable. See the [unit-testing boundaries diagram](diagrams/unit-testing-boundaries.md).
+
+The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves; Chapter 18 tests meaningful behavior without unrelated infrastructure.
 
 ## Requirements and installation
 
@@ -207,6 +209,22 @@ php tests/run.php
 composer test
 ```
 
+Run the focused PHP unit exemplars and inspect the stable testing catalogs:
+
+```bash
+composer test:unit
+./bin/digital-banking-lab test-inventory
+./bin/digital-banking-lab test-determinism
+```
+
+## Testing strategy
+
+- **Unit:** domain, application orchestration, adapter semantics, presenters, and frontend parsers/reducers/validators at meaningful boundaries.
+- **Integration:** real collaboration across local HTTP, SQL, REST transport, or SOAP transport boundaries.
+- **End-to-end:** a small number of complete user/system journeys.
+
+Chapter 19 will focus on integration testing across Harbor APIs, SQL, REST clients, SOAP clients, and frontend/backend boundaries; it is not implemented here.
+
 ## Member Web
 
 Run the backend API and frontend in separate terminals:
@@ -248,7 +266,7 @@ curl -i -X POST http://127.0.0.1:8080/api/members/member-0001/transfer-preview \
 
 ## Roadmap
 
-Chapters 0 through 17 are implemented. Later entries describe direction, not existing chapters.
+Chapters 0 through 18 are implemented. Later entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -268,8 +286,8 @@ Chapters 0 through 17 are implemented. Later entries describe direction, not exi
 16. **Third-party fintech integration** — capability and risk evaluation (Chapter 15 — implemented)
 17. **Secure input validation** — trust boundaries and defensive handling (Chapter 16 — implemented)
 18. **Protecting financial data** — minimization, masking, and safe logging (Chapter 17 — implemented)
-19. **Unit testing** — fast tests around domain and application behavior (Chapter 18 — next)
-20. **Integration testing** — deterministic tests at system boundaries
+19. **Unit testing** — meaningful deterministic boundaries (Chapter 18 — implemented)
+20. **Integration testing** — deterministic tests at system boundaries (Chapter 19 — next)
 21. **Full-stack debugging** — trace failures across browser, services, and adapters
 22. **Git and code-review workflows** — reviewable changes and delivery discipline
 23. **Digital experience optimization** — analytics, usability, conversion, navigation, and SEO
