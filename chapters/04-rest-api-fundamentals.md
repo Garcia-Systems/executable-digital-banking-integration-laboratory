@@ -1,5 +1,7 @@
 # Chapter 4: Designing Harbor’s REST API
 
+![Chapter 4 — Designing Harbor’s REST API](../images/chapters/chapter-04-designing-harbor-rest-api.png)
+
 ## Educational question
 
 **How should Harbor expose stable application capabilities through a REST API without leaking its internal objects or vendor-specific representations?**

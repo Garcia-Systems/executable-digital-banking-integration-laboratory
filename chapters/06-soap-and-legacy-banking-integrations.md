@@ -1,5 +1,7 @@
 # Chapter 6: SOAP and Legacy Banking Integrations
 
+![Chapter 6 — SOAP and Legacy Banking Integrations](../images/chapters/chapter-06-soap-legacy-banking-integrations.png)
+
 ## Educational question
 
 How can Harbor integrate with a legacy SOAP-based banking system without allowing XML, SOAP envelopes, or legacy field names to leak into the rest of the application?

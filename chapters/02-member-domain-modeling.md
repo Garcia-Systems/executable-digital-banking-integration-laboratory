@@ -1,5 +1,7 @@
 # Chapter 2: Modeling the Member Domain
 
+![Chapter 2 — Modeling the Member Domain](../images/chapters/chapter-02-modeling-member-domain.png)
+
 ## Educational question
 
 What should Harbor's applications know about a member before vendor-specific representations enter the system?

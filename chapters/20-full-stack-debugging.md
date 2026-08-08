@@ -1,5 +1,7 @@
 # Chapter 20: Debugging the Full Stack
 
+![Chapter 20 — Debugging the Full Stack](../images/chapters/chapter-20-debugging-full-stack.png)
+
 ## Educational question
 
 **How should an engineer trace a digital-banking symptom across browser, API, application, integration, and database boundaries until the actual failing layer is identified?**

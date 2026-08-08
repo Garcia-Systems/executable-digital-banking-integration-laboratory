@@ -1,5 +1,7 @@
 # Chapter 14: Digital Self-Service Workflows and Form Validation
 
+![Chapter 14 — Digital Self-Service Workflows and Form Validation](../images/chapters/chapter-14-digital-self-service-form-validation.png)
+
 ## Educational question
 
 **How should Harbor accept a member-initiated digital action while validating input consistently across the browser, API, application layer, and domain boundary?**

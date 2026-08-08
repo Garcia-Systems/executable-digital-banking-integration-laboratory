@@ -1,5 +1,7 @@
 # Chapter 13: Frontend Request State and API Consumption Patterns
 
+![Chapter 13 — Frontend Request State and API Consumption Patterns](../images/chapters/chapter-13-frontend-request-state-api-consumption.png)
+
 ## Educational question
 
 **How should Member Web manage asynchronous API requests so loading, retry, cancellation, stale responses, and failure transitions remain correct and observable?**

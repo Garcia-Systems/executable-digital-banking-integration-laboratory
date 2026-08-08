@@ -1,5 +1,7 @@
 # Chapter 18: Automated Unit Testing as an Engineering Discipline
 
+![Chapter 18 — Automated Unit Testing as an Engineering Discipline](../images/chapters/chapter-18-automated-unit-testing.png)
+
 ## Educational question
 
 **How should Harbor design unit tests so each test verifies one meaningful engineering boundary without depending on unrelated infrastructure?**

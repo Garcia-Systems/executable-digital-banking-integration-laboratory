@@ -1,5 +1,7 @@
 # Chapter 22: Optimizing the Digital Banking Experience
 
+![Chapter 22 — Optimizing the Digital Banking Experience](../images/chapters/chapter-22-optimizing-digital-banking-experience.png)
+
 ## Educational question
 
 How should Harbor use analytics, usability evidence, navigation design, mobile-first principles, content, conversion measures, and search visibility to improve a digital experience without confusing optimization with manipulation?

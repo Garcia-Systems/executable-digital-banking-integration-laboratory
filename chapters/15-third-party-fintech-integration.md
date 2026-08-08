@@ -1,5 +1,7 @@
 # Chapter 15: Integrating a Third-Party Fintech Service
 
+![Chapter 15 — Integrating a Third-Party Fintech Service](../images/chapters/chapter-15-third-party-fintech-integration.png)
+
 ## Educational question
 
 How should Harbor introduce a new third-party fintech capability into an existing member workflow without allowing the provider to control Harbor's domain model, API contract, or member experience?

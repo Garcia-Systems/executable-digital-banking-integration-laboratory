@@ -1,5 +1,7 @@
 # Chapter 11: Data-Driven Development
 
+![Chapter 11 — Data-Driven Development](../images/chapters/chapter-11-data-driven-development.png)
+
 ## Educational question
 
 **How should Harbor turn relational data into explicit application decisions without burying business meaning inside SQL queries or presentation code?** Chapter 10 retrieved relational facts correctly. This chapter asks what Harbor chooses to do with them.
