@@ -64,6 +64,8 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 21: Git, Code Review, and Deployment Readiness](chapters/21-git-code-review-deployment-readiness.md) adds deterministic diff classification, risk reasoning, review scenarios, Git inspection, and evidence-based readiness gates without creating pull requests or deploying. See the [change-delivery workflow](diagrams/change-delivery-workflow.md).
 
+[Chapter 22: Optimizing the Digital Banking Experience](chapters/22-digital-experience-optimization.md) adds fictional privacy-conscious analytics, deterministic funnels and friction analysis, experience and SEO audits, Member Web instrumentation, semantic navigation, and public transfer-preview help. See the [digital experience optimization diagram](diagrams/digital-experience-optimization.md).
+
 The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves; Chapter 18 isolates meaningful behavior; Chapter 19 verifies that selected real components agree; Chapter 20 locates propagated symptoms; Chapter 21 turns diffs, risks, and evidence into review and readiness discipline.
 
 ## Requirements and installation
@@ -271,6 +273,24 @@ tests/        Dependency-free executable architecture tests
 
 Chapter 12 renders Harbor data; Chapter 13 manages asynchronous reads safely; Chapter 14 submits a validated self-service workflow; Chapters 15–17 add fintech integration, trust-boundary validation, and sensitive-data minimization.
 
+Chapter 22 experience laboratories:
+
+```bash
+./bin/digital-banking-lab experience-funnel
+./bin/digital-banking-lab experience-funnel --device=mobile
+./bin/digital-banking-lab experience-compare
+./bin/digital-banking-lab transfer-friction
+./bin/digital-banking-lab experience-audit
+./bin/digital-banking-lab seo-audit
+./bin/digital-banking-lab experience-report
+```
+
+The public **Understanding Transfer Previews** page is available at `/help/transfer-preview.html`; Member Web itself is marked `noindex,nofollow` as defense in depth, not as access control.
+
+### Analytics Privacy
+
+Laboratory analytics are fictional, deterministic, local-only, and intentionally exclude member financial values, names, Harbor banking identifiers, memos, credentials, and vendor identifiers. Analytics describes task behavior without reproducing member financial records. The next chapter will focus on **the complete end-to-end digital banking integration laboratory**; Chapter 23 is not implemented here.
+
 Transfer preview example:
 
 ```bash
@@ -312,11 +332,11 @@ The catalog and run views withhold the root cause; trace narrows the boundary, w
 ./bin/digital-banking-lab release-summary
 ```
 
-The validation workflow runs on pull requests and pushes to `main`; it installs PHP/frontend dependencies, runs the same `./bin/verify` core as developers, then runs architecture, security, and API-data checks. It uses no secrets, live vendors, merge automation, or deployment. The next chapter will focus on **digital experience optimization using analytics, usability, navigation, conversion, content, and SEO concepts**.
+The validation workflow runs on pull requests and pushes to `main`; it installs PHP/frontend dependencies, runs the same `./bin/verify` core as developers, then runs architecture, security, and API-data checks. It uses no secrets, live vendors, merge automation, or deployment. The next chapter will focus on **the complete end-to-end digital banking integration laboratory**.
 
 ## Roadmap
 
-Chapters 0 through 21 are implemented. Later entries describe direction, not existing chapters.
+Chapters 0 through 22 are implemented. Later entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -340,8 +360,8 @@ Chapters 0 through 21 are implemented. Later entries describe direction, not exi
 20. **Integration testing** — deterministic tests at system boundaries (Chapter 19 — implemented)
 21. **Full-stack debugging** — trace failures across browser, services, and adapters (Chapter 20 — implemented)
 22. **Git, code review, and deployment readiness** — reviewable changes and delivery discipline (Chapter 21 — implemented)
-23. **Digital experience optimization** — analytics, usability, conversion, navigation, content, and SEO (Chapter 22 — next)
-24. **End-to-end digital banking integration laboratory** — assemble and assess the complete flow
+23. **Digital experience optimization** — analytics, usability, conversion, navigation, content, and SEO (Chapter 22 — implemented)
+24. **End-to-end digital banking integration laboratory** — assemble and assess the complete flow (Chapter 23 — next)
 
 ## Safety and scope
 

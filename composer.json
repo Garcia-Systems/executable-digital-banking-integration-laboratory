@@ -7,7 +7,7 @@
     "psr-4": {"Harbor\\DigitalBankingLab\\": "src/"}
   },
   "scripts": {
-    "test": "php tests/run.php && php tests/Unit/run.php",
+    "test": "php tests/run.php && php tests/Unit/run.php && php tests/Experience/run.php",
     "test:unit": "php tests/Unit/run.php",
     "test:integration": "php tests/Integration/run.php",
     "test:debug": "php tests/Debug/run.php",

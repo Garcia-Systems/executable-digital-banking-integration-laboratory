@@ -2,6 +2,7 @@ import { RequestAbortedError, type MemberApi } from './api';
 import { ContractError, type MemberSummaryDto } from './contracts';
 import type { MemberVerificationDto } from './contracts';
 import { TransferForm } from './transfer';
+import { noAnalytics,type AnalyticsRecorder } from './analytics';
 
 export type RequestId = `request-${string}`;
 
@@ -49,8 +50,9 @@ export class MemberPage {
     private readonly api: MemberApi,
     memberId: string,
     private readonly sequence = new RequestSequence(),
-    readonly trace = new RequestTrace()
-  ) { this.selectedMemberId = memberId; this.transfer=new TransferForm(api as MemberApi & Partial<import('./api').TransferApi>,()=>this.selectedMemberId,()=>this.listener(this.state)); }
+    readonly trace = new RequestTrace(),
+    readonly analytics:AnalyticsRecorder=noAnalytics
+  ) { this.selectedMemberId = memberId; this.transfer=new TransferForm(api as MemberApi & Partial<import('./api').TransferApi>,()=>this.selectedMemberId,()=>this.listener(this.state),analytics); }
 
   subscribe(listener: (state: MemberPageState) => void): void {
     this.listener = listener;
@@ -84,6 +86,7 @@ export class MemberPage {
       if (member.memberId !== memberId) throw new ContractError('Member response did not match the request.');
       this.trace.record(`${requestId} SUCCESS`);
       this.transition({ type: 'REQUEST_SUCCEEDED', requestId, requestedMemberId: memberId, member });
+      this.analytics.record('member_summary_loaded');
       if(this.api.getVerification){
         try{const verification=await this.api.getVerification(memberId,controller.signal);if(this.isCurrent(requestId)&&verification.memberId===memberId)this.verification={kind:'loaded',result:verification};}
         catch(error){if(this.isCurrent(requestId)&&!controller.signal.aborted)this.verification={kind:'error'};}

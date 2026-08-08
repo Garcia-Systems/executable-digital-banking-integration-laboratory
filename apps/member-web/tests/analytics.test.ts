@@ -1,0 +1,11 @@
+import {describe,expect,it,vi} from 'vitest';
+import {InMemoryAnalyticsRecorder} from '../src/analytics';
+import {TransferForm} from '../src/transfer';
+import type {TransferPreviewDto} from '../src/contracts';
+
+const preview={previewId:'preview-1',memberId:'member-0001',sourceAccount:{accountId:'account-1',displayName:'Checking'},destinationAccount:{accountId:'account-2',displayName:'Savings'},amount:{currency:'USD',minorUnits:100,formatted:'$1.00'},sourceAvailableBalance:{currency:'USD',minorUnits:200,formatted:'$2.00'},projectedAvailableBalance:{currency:'USD',minorUnits:100,formatted:'$1.00'},memo:'private memo'} satisfies TransferPreviewDto;
+describe('privacy-conscious experience analytics',()=>{
+ it('records start and client category once without form values',async()=>{const analytics=new InMemoryAnalyticsRecorder();const form=new TransferForm({},()=> 'member-0001',()=>undefined,analytics);form.update('sourceAccountId','account-1');form.update('destinationAccountId','account-1');form.update('amount','not money');form.update('memo','private memo');await form.submit();expect(analytics.events).toEqual([{name:'transfer_preview_started',properties:{}},{name:'transfer_preview_validation_failed',properties:{error_category:'same_account'}}]);expect(JSON.stringify(analytics.events)).not.toMatch(/private memo|account-1|member-0001/);});
+ it('records one success without amount memo balances member or vendor IDs',async()=>{const analytics=new InMemoryAnalyticsRecorder();const api={previewTransfer:vi.fn().mockResolvedValue(preview)};const form=new TransferForm(api,()=> 'member-0001',()=>undefined,analytics);form.update('sourceAccountId','account-1');form.update('destinationAccountId','account-2');form.update('amount','1.00');form.update('memo','private memo');await form.submit();expect(analytics.events.map(e=>e.name)).toEqual(['transfer_preview_started','transfer_preview_succeeded']);expect(JSON.stringify(analytics.events)).not.toMatch(/1\.00|private memo|balance|member-0001|vendor/i);});
+ it('rejects non-allow-listed context',()=>{const analytics=new InMemoryAnalyticsRecorder();expect(()=>analytics.record('page_view',{amount:'10'} as never)).toThrow(/allow-listed/);});
+});
