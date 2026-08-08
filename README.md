@@ -32,7 +32,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 5: Consuming a Vendor REST API](chapters/05-consuming-vendor-rest-apis.md) adds a deterministic HTTP transport, strict Northstar REST client, typed failure taxonomy, and REST-backed application composition while preserving Harbor's public contract. See the [vendor REST integration diagram](diagrams/vendor-rest-integration.md).
 
-The progression is deliberate: Chapter 0 maps the **system landscape**, Chapter 1 supplies **controlled deterministic infrastructure**, Chapter 2 defines the **Harbor internal member domain**, Chapter 3 establishes the **vendor semantic boundary**, Chapter 4 defines a **Harbor-owned REST API**, and Chapter 5 adds **vendor REST transport**. Harbor can now expose its own REST API while consuming a separate vendor REST API behind that contract.
+[Chapter 6: SOAP and Legacy Banking Integrations](chapters/06-soap-and-legacy-banking-integrations.md) adds the fictional Heritage core, deterministic SOAP/XML transport, strict fault parsing, explicit legacy identities, and a focused Harbor balance-details capability. See the [SOAP legacy integration diagram](diagrams/soap-legacy-integration.md).
+
+The progression is deliberate: Chapter 0 maps the **system landscape**, Chapter 1 supplies a **deterministic laboratory**, Chapter 2 defines the **Harbor member domain**, Chapter 3 establishes the **vendor semantic boundary**, Chapter 4 defines a **Harbor REST API**, Chapter 5 adds **consuming vendor REST**, and Chapter 6 adds **SOAP and legacy core integration**. Harbor can now interact with two very different external systems while preserving Harbor-owned internal models.
 
 ## Requirements and installation
 
@@ -111,6 +113,14 @@ Inspect Chapter 5's deterministic vendor REST request and representative scenari
 ./bin/digital-banking-lab vendor-rest member-0001 --scenario=unsupported-product
 ```
 
+Inspect Chapter 6's Harbor balance capability, exact SOAP envelope, and integration-style comparison:
+
+```bash
+./bin/digital-banking-lab core-account account-0001
+./bin/digital-banking-lab soap-request account-0001
+./bin/digital-banking-lab integration-styles
+```
+
 Start the Chapter 4 local API, then request success and representative errors from another terminal:
 
 ```bash
@@ -142,11 +152,11 @@ src/Application/ Use cases and output rendering
 tests/        Dependency-free executable architecture tests
 ```
 
-Future chapters will extend these same boundaries rather than replacing them. The next chapter introduces a different integration style: **SOAP and legacy banking integrations**. Chapter 6 is not implemented here.
+Future chapters will extend these same boundaries rather than replacing them. The next chapter focuses on **integration adapters as a reusable architectural pattern across multiple external systems**. Chapter 7 is not implemented here.
 
 ## Roadmap
 
-Chapters 0 through 5 are implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0 through 6 are implemented. The remaining entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -154,7 +164,7 @@ Chapters 0 through 5 are implemented. The remaining entries describe direction, 
 4. **Vendor platform boundaries** — contracts and division of responsibility (Chapter 3 — implemented)
 5. **REST API fundamentals** — resources, methods, status codes, and schemas (Chapter 4 — implemented)
 6. **Consuming vendor REST APIs** — deterministic vendor API clients (Chapter 5 — implemented)
-7. **SOAP and legacy banking integrations** — envelopes, contracts, and translation
+7. **SOAP and legacy banking integrations** — envelopes, contracts, and translation (Chapter 6 — implemented)
 8. **Integration adapters** — isolate protocols from application behavior
 9. **Vendor failure handling** — timeouts, retries, idempotency, and safe degradation
 10. **PHP application services** — orchestrate domain work and integrations
