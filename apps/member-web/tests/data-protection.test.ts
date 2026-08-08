@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { HarborApiClient } from '../src/api';
 
 describe('Chapter 17 sensitive data handling', () => {
   it('does not add durable browser storage, cookies, or console logging', () => {
-    const sources=['api.ts','contracts.ts','main.ts','render.ts','state.ts','transfer.ts'].map(file=>readFileSync(new URL(`../src/${file}`,import.meta.url),'utf8')).join('\n');
+    const sources=['api.ts','contracts.ts','main.ts','render.ts','state.ts','transfer.ts']
+      .map(file=>readFileSync(resolve(process.cwd(),'src',file),'utf8'))
+      .join('\n');
     for(const forbidden of ['localStorage','sessionStorage','indexedDB','document.cookie','console.log','console.debug']) expect(sources).not.toContain(forbidden);
   });
 

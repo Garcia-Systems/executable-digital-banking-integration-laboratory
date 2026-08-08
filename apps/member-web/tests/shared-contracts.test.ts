@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseMemberSummary, parseMemberVerification, parseTransferPreview } from '../src/contracts';
 
 const fixture = (name: string): unknown => JSON.parse(
-  readFileSync(new URL(`../../../contracts/api/${name}.json`, import.meta.url), 'utf8')
+  readFileSync(resolve(process.cwd(), '..', '..', 'contracts', 'api', `${name}.json`), 'utf8')
 );
 
 describe('shared Harbor API contract artifacts', () => {
