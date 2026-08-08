@@ -26,7 +26,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 2: Modeling the Member Domain](chapters/02-member-domain-modeling.md) defines Harbor's internal Member, Account, typed identifiers and statuses, and integer-minor-unit Money. Vendor representations remain outside this boundary. See the [member domain diagram](diagrams/member-domain-model.md).
 
-The repository now has three conceptual layers: Chapter 0 maps the **system landscape**, Chapter 1 supplies **deterministic laboratory infrastructure**, and Chapter 2 defines **Harbor's internal member domain**.
+[Chapter 3: Vendor Platform Boundaries](chapters/03-vendor-platform-boundaries.md) introduces the Harbor-owned gateway, explicit vendor identities, deterministic Northstar model, and adapter that translates vendor language into Harbor domain meaning. See the [vendor boundary diagram](diagrams/vendor-platform-boundary.md).
+
+The progression is deliberate: Chapter 0 maps the **system landscape**, Chapter 1 supplies **controlled deterministic infrastructure**, Chapter 2 defines the **Harbor internal member domain**, and Chapter 3 establishes the **vendor/domain boundary**.
 
 ## Requirements and installation
 
@@ -84,6 +86,14 @@ Render the deterministic Chapter 2 member summary:
 ./bin/digital-banking-lab member member-0001
 ```
 
+Translate the same member through Northstar, inspect the explicitly separate identities, and compare domain meaning:
+
+```bash
+./bin/digital-banking-lab vendor-member member-0001
+./bin/digital-banking-lab vendor-map member-0001
+./bin/digital-banking-lab compare-member member-0001
+```
+
 Run all tests:
 
 ```bash
@@ -104,18 +114,16 @@ src/Application/ Use cases and output rendering
 tests/        Dependency-free executable architecture tests
 ```
 
-Future chapters will extend these same boundaries rather than replacing them: protocols become simulated adapters, application behavior gains services and persistence, and member channels gain TypeScript and web experiences.
-
-The next stage asks: **How should Harbor isolate its internal domain from vendor-owned platform models?** Chapter 3 will address that boundary; it is not implemented here.
+Future chapters will extend these same boundaries rather than replacing them. Chapter 4's natural objective is **defining Harbor's REST API contract independently of the vendor transport behind it**; it is not implemented here.
 
 ## Roadmap
 
-Chapters 0, 1, and 2 are implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0 through 3 are implemented. The remaining entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
 3. **Member domain modeling** — safe fictional member and account value objects (Chapter 2 — implemented)
-4. **Vendor platform boundaries** — contracts and division of responsibility
+4. **Vendor platform boundaries** — contracts and division of responsibility (Chapter 3 — implemented)
 5. **REST API fundamentals** — resources, methods, status codes, and schemas
 6. **Consuming vendor REST APIs** — deterministic vendor API clients
 7. **SOAP and legacy banking integrations** — envelopes, contracts, and translation
