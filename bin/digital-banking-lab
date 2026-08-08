@@ -6,7 +6,9 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/bootstrap.php';
 
 use Harbor\DigitalBankingLab\Application\EcosystemRenderer;
+use Harbor\DigitalBankingLab\Application\LaboratoryRenderer;
 use Harbor\DigitalBankingLab\Fixtures\HarborEcosystemFixture;
+use Harbor\DigitalBankingLab\Fixtures\LaboratoryFixtureFactory;
 
 $command = $argv[1] ?? null;
 $renderer = new EcosystemRenderer();
@@ -20,6 +22,29 @@ if ($command === 'path') {
     echo $renderer->renderMemberWebPath($ecosystem);
     exit(0);
 }
+if ($command === 'laboratory' || $command === 'determinism') {
+    $scenarioIdentifier = $argv[2] ?? null;
+    if ($scenarioIdentifier === null) {
+        fwrite(STDERR, "A laboratory scenario is required.\n");
+        exit(1);
+    }
+    try {
+        $laboratoryRenderer = new LaboratoryRenderer();
+        if ($command === 'laboratory') {
+            echo $laboratoryRenderer->render(LaboratoryFixtureFactory::create($scenarioIdentifier));
+            exit(0);
+        }
+        $first = $laboratoryRenderer->render(LaboratoryFixtureFactory::create($scenarioIdentifier));
+        $second = $laboratoryRenderer->render(LaboratoryFixtureFactory::create($scenarioIdentifier));
+        $firstHash = hash('sha256', $first);
+        $secondHash = hash('sha256', $second);
+        echo "Scenario: {$scenarioIdentifier}\nRun 1 hash: {$firstHash}\nRun 2 hash: {$secondHash}\nDeterministic: " . ($first === $second ? 'YES' : 'NO') . "\n";
+        exit($first === $second ? 0 : 1);
+    } catch (InvalidArgumentException $error) {
+        fwrite(STDERR, $error->getMessage() . "\n");
+        exit(1);
+    }
+}
 
-fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path>\n");
+fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO>\n");
 exit(1);

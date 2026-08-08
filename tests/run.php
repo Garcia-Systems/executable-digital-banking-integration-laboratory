@@ -5,8 +5,13 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/bootstrap.php';
 
 use Harbor\DigitalBankingLab\Application\EcosystemRenderer;
+use Harbor\DigitalBankingLab\Application\LaboratoryRenderer;
+use Harbor\DigitalBankingLab\Domain\FixedClock;
+use Harbor\DigitalBankingLab\Domain\SequenceIdGenerator;
 use Harbor\DigitalBankingLab\Domain\SystemOwnership;
+use Harbor\DigitalBankingLab\Domain\VendorStatus;
 use Harbor\DigitalBankingLab\Fixtures\HarborEcosystemFixture;
+use Harbor\DigitalBankingLab\Fixtures\LaboratoryFixtureFactory;
 
 $tests = [];
 $test = static function (string $name, callable $body) use (&$tests): void { $tests[$name] = $body; };
@@ -52,6 +57,59 @@ $test('repeated rendering is byte-for-byte identical', function () use ($assert)
     $ecosystem = HarborEcosystemFixture::create();
     $assert($renderer->render($ecosystem) === $renderer->render($ecosystem));
     $assert($renderer->renderMemberWebPath($ecosystem) === $renderer->renderMemberWebPath($ecosystem));
+});
+
+$test('fixed clock always returns its configured instant', function () use ($assert): void {
+    $clock = new FixedClock('2026-01-15T14:30:00Z');
+    $assert($clock->now()->format('Y-m-d\\TH:i:s\\Z') === '2026-01-15T14:30:00Z');
+    $assert($clock->now() === $clock->now(), 'Repeated clock reads should return the configured immutable instant.');
+});
+
+$test('sequence identifiers are predictable', function () use ($assert): void {
+    $generator = new SequenceIdGenerator();
+    $assert([$generator->nextId(), $generator->nextId(), $generator->nextId()] === ['member-0001', 'member-0002', 'member-0003']);
+});
+
+$test('identically configured generators produce identical sequences', function () use ($assert): void {
+    $first = new SequenceIdGenerator('case-', 7, 3);
+    $second = new SequenceIdGenerator('case-', 7, 3);
+    $assert([$first->nextId(), $first->nextId()] === [$second->nextId(), $second->nextId()]);
+});
+
+$test('every known laboratory scenario can be constructed', function () use ($assert): void {
+    foreach (LaboratoryFixtureFactory::scenarioIdentifiers() as $identifier) {
+        $assert(LaboratoryFixtureFactory::create($identifier)->scenario->identifier === $identifier);
+    }
+});
+
+$test('unknown laboratory scenarios fail explicitly', function () use ($assert): void {
+    try {
+        LaboratoryFixtureFactory::create('not-a-scenario');
+        $assert(false, 'An unknown scenario should not be constructed.');
+    } catch (InvalidArgumentException $error) {
+        $assert($error->getMessage() === 'Unknown laboratory scenario: not-a-scenario');
+    }
+});
+
+$test('scenarios map to explicit vendor states', function () use ($assert): void {
+    $assert(LaboratoryFixtureFactory::create('normal-operation')->vendor->status === VendorStatus::AVAILABLE);
+    $assert(LaboratoryFixtureFactory::create('vendor-timeout')->vendor->status === VendorStatus::SLOW);
+    $assert(LaboratoryFixtureFactory::create('vendor-unavailable')->vendor->status === VendorStatus::UNAVAILABLE);
+});
+
+$test('laboratory rendering does not consume an identifier', function () use ($assert): void {
+    $context = LaboratoryFixtureFactory::create('normal-operation');
+    $renderer = new LaboratoryRenderer();
+    $assert($renderer->render($context) === $renderer->render($context));
+    $assert($context->idGenerator->nextId() === 'member-0001');
+});
+
+$test('independently constructed scenarios render identically', function () use ($assert): void {
+    $renderer = new LaboratoryRenderer();
+    $first = $renderer->render(LaboratoryFixtureFactory::create('normal-operation'));
+    $second = $renderer->render(LaboratoryFixtureFactory::create('normal-operation'));
+    $assert($first === $second);
+    $assert(hash('sha256', $first) === hash('sha256', $second));
 });
 
 $failures = 0;
