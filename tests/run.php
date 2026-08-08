@@ -22,6 +22,9 @@ use Harbor\DigitalBankingLab\Integration\Northstar\Model\{NorthstarCustomer, Nor
 use Harbor\DigitalBankingLab\Api\MemberSummaryPresenter;
 use Harbor\DigitalBankingLab\Application\{GetMemberSummary, MemberNotFound};
 use Harbor\DigitalBankingLab\Http\HttpKernelFactory;
+use Harbor\DigitalBankingLab\Infrastructure\Http\DeterministicHttpClient;
+use Harbor\DigitalBankingLab\Integration\Northstar\NorthstarRestClient;
+use Harbor\DigitalBankingLab\Integration\Northstar\Exception\{NorthstarCustomerNotFound, NorthstarHttpFailure, NorthstarResponseDecodingFailure, NorthstarTimeoutFailure, NorthstarUnavailableFailure};
 
 $tests = [];
 $test = static function (string $name, callable $body) use (&$tests): void { $tests[$name] = $body; };
@@ -300,6 +303,72 @@ $test('HTTP errors use the stable safe error contract', function () use ($assert
         $assert(array_keys($body['error']) === ['code', 'message'] && $body['error']['code'] === $code);
         $assert(!str_contains($response->body, 'Northstar') && !str_contains($response->body, 'Exception') && !str_contains($response->body, '/workspace/'));
     }
+});
+
+$restClient = static function (string $scenario = 'normal', ?DeterministicHttpClient &$transport = null): NorthstarRestClient {
+    $transport = new DeterministicHttpClient($scenario, dirname(__DIR__) . '/fixtures/northstar');
+    return new NorthstarRestClient($transport, 'https://northstar.invalid');
+};
+
+$test('Northstar REST client constructs the explicit GET request', function () use ($assert, $restClient): void {
+    $client = $restClient('normal', $transport);
+    $client->findCustomer(new NorthstarCustomerKey('NS-CUST-4417'));
+    $request = $transport->requests()[0];
+    $assert($request['method'] === 'GET');
+    $assert($request['url'] === 'https://northstar.invalid/v1/customers/NS-CUST-4417');
+    $assert($request['headers'] === ['Accept' => 'application/json']);
+});
+
+$test('Northstar REST client decodes typed customer products and integer balances', function () use ($assert, $restClient): void {
+    $customer = $restClient()->findCustomer(new NorthstarCustomerKey('NS-CUST-4417'));
+    $assert($customer instanceof NorthstarCustomer && $customer->customerKey->value === 'NS-CUST-4417');
+    $assert(array_map(fn ($product) => $product->productClass->value, $customer->products) === ['DDA', 'SAV']);
+    $assert($customer->products[0]->currentBalanceCents === 245075 && is_int($customer->products[0]->currentBalanceCents));
+});
+
+$test('Northstar REST client classifies HTTP status failures', function () use ($assert, $restClient): void {
+    try { $restClient('customer-not-found')->findCustomer(new NorthstarCustomerKey('NS-CUST-4417')); $assert(false); }
+    catch (NorthstarCustomerNotFound $error) { $assert($error->statusCode === 404); }
+    try { $restClient('vendor-error')->findCustomer(new NorthstarCustomerKey('NS-CUST-4417')); $assert(false); }
+    catch (NorthstarHttpFailure $error) { $assert($error->statusCode === 500); }
+});
+
+$test('Northstar REST client rejects malformed and incomplete JSON', function () use ($assert, $restClient): void {
+    foreach (['malformed-json', 'incomplete-response'] as $scenario) {
+        try { $restClient($scenario)->findCustomer(new NorthstarCustomerKey('NS-CUST-4417')); $assert(false); }
+        catch (NorthstarResponseDecodingFailure $error) { $assert(str_contains($error->getMessage(), 'Northstar')); }
+    }
+});
+
+$test('Northstar REST transport distinguishes immediate timeout and unavailability', function () use ($assert, $restClient): void {
+    $started = hrtime(true);
+    try { $restClient('vendor-timeout')->findCustomer(new NorthstarCustomerKey('NS-CUST-4417')); $assert(false); }
+    catch (NorthstarTimeoutFailure $error) { $assert(str_contains($error->getMessage(), 'timed out')); }
+    $assert((hrtime(true) - $started) < 100_000_000, 'Deterministic timeout must not wait.');
+    try { $restClient('vendor-unavailable')->findCustomer(new NorthstarCustomerKey('NS-CUST-4417')); $assert(false); }
+    catch (NorthstarUnavailableFailure $error) { $assert(str_contains($error->getMessage(), 'unavailable')); }
+});
+
+$test('Northstar adapter works through REST while preserving Harbor identities and meaning', function () use ($assert, $restClient): void {
+    $gateway = new NorthstarDigitalBankingAdapter($restClient(), VendorIdentityMap::laboratory(), new NorthstarTranslator());
+    $member = $gateway->findMember(new MemberId('member-0001'));
+    $assert((new MemberDomainComparator())->equivalent(MemberFixtureFactory::create(), $member));
+    $serialized = serialize($member);
+    $assert(!str_contains($serialized, 'NS-CUST') && !str_contains($serialized, 'NS-PROD') && !str_contains($serialized, 'HTTP'));
+});
+
+$test('unsupported REST product remains a semantic translation failure', function () use ($assert, $restClient): void {
+    $gateway = new NorthstarDigitalBankingAdapter($restClient('unsupported-product'), VendorIdentityMap::laboratory(), new NorthstarTranslator());
+    try { $gateway->findMember(new MemberId('member-0001')); $assert(false); }
+    catch (VendorTranslationException $error) { $assert($error->getMessage() === 'Unsupported Northstar productClass: MMA'); }
+});
+
+$test('REST-backed Harbor API preserves the Chapter 4 contract and hides vendor transport', function () use ($assert): void {
+    $response = HttpKernelFactory::create()->dispatch('GET', '/api/members/member-0001');
+    $actual = json_decode($response->body, true, 512, JSON_THROW_ON_ERROR);
+    $expected = json_decode((string) file_get_contents(__DIR__ . '/Fixtures/api/member-0001.json'), true, 512, JSON_THROW_ON_ERROR);
+    $assert($response->status === 200 && $actual === $expected);
+    foreach (['NS-CUST', 'NS-PROD', 'northstar.invalid', 'Accept', 'DeterministicHttpClient', 'NorthstarRestClient'] as $detail) $assert(!str_contains($response->body, $detail));
 });
 
 $failures = 0;

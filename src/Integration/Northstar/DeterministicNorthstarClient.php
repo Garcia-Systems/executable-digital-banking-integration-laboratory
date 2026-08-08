@@ -5,7 +5,7 @@ namespace Harbor\DigitalBankingLab\Integration\Northstar;
 use Harbor\DigitalBankingLab\Integration\UnknownVendorIdentity;
 use Harbor\DigitalBankingLab\Integration\Northstar\Model\{NorthstarCustomer, NorthstarCustomerKey, NorthstarCustomerStatus, NorthstarProduct, NorthstarProductClass, NorthstarProductKey, NorthstarProductState};
 
-final readonly class DeterministicNorthstarClient
+final readonly class DeterministicNorthstarClient implements NorthstarClient
 {
     public function __construct(private string $scenario = 'normal') {}
 
