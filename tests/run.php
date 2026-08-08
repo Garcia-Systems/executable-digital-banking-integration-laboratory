@@ -25,6 +25,12 @@ use Harbor\DigitalBankingLab\Http\HttpKernelFactory;
 use Harbor\DigitalBankingLab\Infrastructure\Http\DeterministicHttpClient;
 use Harbor\DigitalBankingLab\Integration\Northstar\NorthstarRestClient;
 use Harbor\DigitalBankingLab\Integration\Northstar\Exception\{NorthstarCustomerNotFound, NorthstarHttpFailure, NorthstarResponseDecodingFailure, NorthstarTimeoutFailure, NorthstarUnavailableFailure};
+use Harbor\DigitalBankingLab\Application\{CoreBankingGateway, GetAccountBalanceDetails};
+use Harbor\DigitalBankingLab\Domain\Member\AccountBalanceDetails;
+use Harbor\DigitalBankingLab\Infrastructure\Soap\DeterministicHeritageSoapTransport;
+use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, HeritageIdentityMap, HeritageSoapClient, HeritageSoapEnvelopeBuilder};
+use Harbor\DigitalBankingLab\Integration\Heritage\Exception\{HeritageAccountNotFound, HeritageCoreError, HeritageResponseDecodingFailure};
+use Harbor\DigitalBankingLab\Integration\Heritage\Model\{HeritageAccountDetails, HeritageAccountNumber};
 
 $tests = [];
 $test = static function (string $name, callable $body) use (&$tests): void { $tests[$name] = $body; };
@@ -369,6 +375,86 @@ $test('REST-backed Harbor API preserves the Chapter 4 contract and hides vendor 
     $expected = json_decode((string) file_get_contents(__DIR__ . '/Fixtures/api/member-0001.json'), true, 512, JSON_THROW_ON_ERROR);
     $assert($response->status === 200 && $actual === $expected);
     foreach (['NS-CUST', 'NS-PROD', 'northstar.invalid', 'Accept', 'DeterministicHttpClient', 'NorthstarRestClient'] as $detail) $assert(!str_contains($response->body, $detail));
+});
+
+$heritageClient = static function (string $scenario = 'normal', ?DeterministicHeritageSoapTransport &$transport = null): HeritageSoapClient {
+    $transport = new DeterministicHeritageSoapTransport($scenario);
+    return new HeritageSoapClient($transport, new HeritageSoapEnvelopeBuilder(), 'https://heritage-core.invalid/soap');
+};
+
+$test('SOAP request is deterministic, namespaced, identified, and safely escaped', function () use ($assert): void {
+    $builder = new HeritageSoapEnvelopeBuilder();
+    $first = $builder->getAccountDetails(new HeritageAccountNumber('HC-100045'));
+    $assert($first === $builder->getAccountDetails(new HeritageAccountNumber('HC-100045')));
+    $assert(str_contains($first, 'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"'));
+    $assert(str_contains($first, '<her:GetAccountDetailsRequest>') && str_contains($first, '>HC-100045</her:AccountNumber>'));
+    $escaped = $builder->getAccountDetails(new HeritageAccountNumber('HC-&<"'));
+    $assert(str_contains($escaped, 'HC-&amp;&lt;&quot;') && !str_contains($escaped, 'HC-&<'));
+});
+
+$test('SOAP client decodes Heritage details and preserves integer minor units', function () use ($assert, $heritageClient): void {
+    $client = $heritageClient('normal', $transport);
+    $details = $client->getAccountDetails(new HeritageAccountNumber('HC-100045'));
+    $assert($details instanceof HeritageAccountDetails && $details->accountNumber->value === 'HC-100045');
+    $assert($details->ledgerBalanceMinorUnits === 245075 && is_int($details->ledgerBalanceMinorUnits));
+    $assert($details->availableBalanceMinorUnits === 238575 && $details->currencyCode === 'USD');
+    $assert(count($transport->requests()) === 1 && $transport->requests()[0]['endpoint'] === 'https://heritage-core.invalid/soap');
+});
+
+$test('HTTP 200 SOAP faults are classified by SOAP meaning', function () use ($assert, $heritageClient): void {
+    try { $heritageClient('account-not-found')->getAccountDetails(new HeritageAccountNumber('HC-X')); $assert(false); }
+    catch (HeritageAccountNotFound $error) { $assert($error->httpStatus === 200 && str_contains($error->faultCode, 'ACCOUNT_NOT_FOUND')); }
+    try { $heritageClient('core-error')->getAccountDetails(new HeritageAccountNumber('HC-X')); $assert(false); }
+    catch (HeritageCoreError $error) { $assert($error->httpStatus === 200 && str_contains($error->faultCode, 'CORE_ERROR')); }
+});
+
+$test('SOAP client distinguishes malformed, incomplete, and unexpected XML', function () use ($assert, $heritageClient): void {
+    foreach (['malformed-xml' => 'malformed XML', 'incomplete-response' => "AvailableBalanceMinorUnits", 'unexpected-operation' => 'GetAccountDetailsResponse'] as $scenario => $message) {
+        try { $heritageClient($scenario)->getAccountDetails(new HeritageAccountNumber('HC-X')); $assert(false); }
+        catch (HeritageResponseDecodingFailure $error) { $assert(str_contains($error->getMessage(), $message)); }
+    }
+});
+
+$test('Heritage identity mapping remains a distinct namespace', function () use ($assert): void {
+    $map = HeritageIdentityMap::laboratory();
+    $assert($map->heritageAccountFor(new AccountId('account-0001'))->value === 'HC-100045');
+    $assert($map->heritageAccountFor(new AccountId('account-0002'))->value === 'HC-100046');
+    try { $map->heritageAccountFor(new AccountId('account-9999')); $assert(false); }
+    catch (UnknownVendorIdentity $error) { $assert(str_contains($error->getMessage(), 'account-9999')); }
+});
+
+$test('Heritage adapter translates to focused Harbor values without leakage', function () use ($assert, $heritageClient): void {
+    $adapter = new HeritageCoreBankingAdapter($heritageClient(), HeritageIdentityMap::laboratory());
+    $details = $adapter->accountBalanceDetails(new AccountId('account-0001'));
+    $assert($details instanceof AccountBalanceDetails && $details->accountId->value === 'account-0001');
+    $assert($details->ledgerBalance->minorUnits === 245075 && $details->availableBalance->minorUnits === 238575);
+    $assert($details->status === AccountStatus::OPEN && !str_contains(serialize($details), 'HC-100045'));
+    $assert(!str_contains(serialize($details), 'soap') && !str_contains(serialize($details), 'XML'));
+});
+
+$test('Heritage adapter rejects unsupported status and currency', function () use ($assert, $heritageClient): void {
+    foreach (['unsupported-status' => 'AccountStatus', 'unsupported-currency' => 'CurrencyCode'] as $scenario => $word) {
+        try { (new HeritageCoreBankingAdapter($heritageClient($scenario), HeritageIdentityMap::laboratory()))->accountBalanceDetails(new AccountId('account-0001')); $assert(false); }
+        catch (VendorTranslationException $error) { $assert(str_contains($error->getMessage(), $word)); }
+    }
+});
+
+$test('GetAccountBalanceDetails depends only on a Harbor-owned gateway', function () use ($assert): void {
+    $gateway = new class implements CoreBankingGateway {
+        public function accountBalanceDetails(AccountId $id): AccountBalanceDetails { return new AccountBalanceDetails($id, Money::usd(1), Money::usd(1), AccountStatus::CLOSED); }
+    };
+    $details = (new GetAccountBalanceDetails($gateway))->execute(new AccountId('account-test'));
+    $assert($details->accountId->value === 'account-test' && $details->ledgerBalance->minorUnits === 1);
+});
+
+$test('Harbor domain and application source do not depend on Heritage SOAP or XML', function () use ($assert): void {
+    foreach ([dirname(__DIR__) . '/src/Domain', dirname(__DIR__) . '/src/Application'] as $directory) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory)) as $file) {
+            if (!$file->isFile() || $file->getExtension() !== 'php') continue;
+            $source = (string) file_get_contents($file->getPathname());
+            foreach (['Integration\\Heritage', 'Infrastructure\\Soap', 'DOMDocument', 'SimpleXML', 'soap:'] as $forbidden) $assert(!str_contains($source, $forbidden), "Boundary leak in {$file->getPathname()}: {$forbidden}");
+        }
+    }
 });
 
 $failures = 0;

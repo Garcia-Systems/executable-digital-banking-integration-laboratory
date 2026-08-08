@@ -10,6 +10,7 @@ use Harbor\DigitalBankingLab\Application\LaboratoryRenderer;
 use Harbor\DigitalBankingLab\Application\MemberSummaryRenderer;
 use Harbor\DigitalBankingLab\Application\{MemberDomainComparator, VendorMemberRenderer};
 use Harbor\DigitalBankingLab\Domain\Member\MemberId;
+use Harbor\DigitalBankingLab\Domain\Member\AccountId;
 use Harbor\DigitalBankingLab\Fixtures\HarborEcosystemFixture;
 use Harbor\DigitalBankingLab\Fixtures\LaboratoryFixtureFactory;
 use Harbor\DigitalBankingLab\Fixtures\MemberFixtureFactory;
@@ -17,10 +18,44 @@ use Harbor\DigitalBankingLab\Infrastructure\Http\DeterministicHttpClient;
 use Harbor\DigitalBankingLab\Integration\{UnknownVendorIdentity, VendorIdentityMap, VendorTranslationException};
 use Harbor\DigitalBankingLab\Integration\Northstar\{DeterministicNorthstarClient, NorthstarDigitalBankingAdapter, NorthstarRestClient, NorthstarTranslator};
 use Harbor\DigitalBankingLab\Integration\Northstar\Exception\{NorthstarCustomerNotFound, NorthstarHttpFailure, NorthstarResponseDecodingFailure, NorthstarTransportFailure};
+use Harbor\DigitalBankingLab\Application\GetAccountBalanceDetails;
+use Harbor\DigitalBankingLab\Infrastructure\Soap\DeterministicHeritageSoapTransport;
+use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, HeritageIdentityMap, HeritageSoapClient, HeritageSoapEnvelopeBuilder};
 
 $command = $argv[1] ?? null;
 $renderer = new EcosystemRenderer();
 $ecosystem = HarborEcosystemFixture::create();
+
+if ($command === 'integration-styles') {
+    echo "Northstar Digital Banking\nTransport: REST\nEncoding: JSON\nPrimary success signal: HTTP status + JSON body\n\n";
+    echo "Heritage Core Banking\nTransport: SOAP\nEncoding: XML\nPrimary operation result: SOAP body / SOAP Fault\n\n";
+    echo "Harbor domain exposure:\nNeither transport leaks into Harbor domain objects.\n";
+    exit(0);
+}
+if (in_array($command, ['core-account', 'soap-request'], true)) {
+    $identifier = $argv[2] ?? null;
+    if ($identifier === null) { fwrite(STDERR, "An account identifier is required.\n"); exit(1); }
+    $scenario = 'normal';
+    foreach (array_slice($argv, 3) as $argument) if (str_starts_with($argument, '--scenario=')) $scenario = substr($argument, 11);
+    try {
+        $accountId = new AccountId($identifier);
+        $identities = HeritageIdentityMap::laboratory();
+        $envelopes = new HeritageSoapEnvelopeBuilder();
+        if ($command === 'soap-request') {
+            echo $envelopes->getAccountDetails($identities->heritageAccountFor($accountId));
+            exit(0);
+        }
+        $transport = new DeterministicHeritageSoapTransport($scenario);
+        $client = new HeritageSoapClient($transport, $envelopes, 'https://heritage-core.invalid/soap');
+        $details = (new GetAccountBalanceDetails(new HeritageCoreBankingAdapter($client, $identities)))->execute($accountId);
+        echo "Harbor Account: {$details->accountId->value}\nLegacy System: Heritage Core Banking\n";
+        echo "Ledger Balance: {$details->ledgerBalance->format()}\nAvailable Balance: {$details->availableBalance->format()}\nStatus: {$details->status->value}\n";
+        exit(0);
+    } catch (Throwable $error) {
+        fwrite(STDERR, get_class($error) . ': ' . $error->getMessage() . "\n");
+        exit(1);
+    }
+}
 
 if ($command === 'ecosystem') {
     echo $renderer->render($ecosystem);
@@ -127,5 +162,5 @@ if ($command === 'laboratory' || $command === 'determinism') {
     }
 }
 
-fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID>\n");
+fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID|core-account ACCOUNT_ID [--scenario=SCENARIO]|soap-request ACCOUNT_ID|integration-styles>\n");
 exit(1);
