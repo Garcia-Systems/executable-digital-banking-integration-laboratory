@@ -50,7 +50,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 14: Digital Self-Service Workflows and Form Validation](chapters/14-digital-self-service-workflows.md) adds a validated, deterministic, non-mutating transfer preview across the browser and Harbor API. See the [self-service validation diagram](diagrams/digital-self-service-validation.md).
 
-The progression is deliberate: Chapter 0 maps the **system landscape**; Chapter 1 supplies a **deterministic laboratory**; Chapter 2 defines the **Harbor domain**; Chapter 3 establishes the **vendor boundary**; Chapter 4 defines the **Harbor REST API**; Chapter 5 adds **vendor REST integration**; Chapter 6 adds **legacy SOAP integration**; Chapter 7 extracts **ports and adapters**; Chapter 8 adds **unified failure handling**; Chapter 9 adds **PHP application orchestration**; Chapter 10 adds **SQL**; Chapter 11 adds **data-driven development**; Chapter 12 makes the **browser consume the Harbor API**; Chapter 13 makes the browser **manage asynchronous API request lifecycles correctly**; and Chapter 14 lets it **submit an authoritatively validated self-service preview**.
+[Chapter 15: Integrating a Third-Party Fintech Service](chapters/15-third-party-fintech-integration.md) composes fictional ClearVerify member verification into transfer preview through a Harbor-owned port, explicit identity/status translation, contained failures, and a provider-independent API and UX. See the [third-party fintech integration diagram](diagrams/third-party-fintech-integration.md).
+
+The progression is deliberate: Chapter 14 lets Harbor accept a validated self-service request; Chapter 15 composes an external fintech capability into that workflow while Harbor retains its domain, API, policy, and member experience. Chapter 16 will focus on **secure input validation and trust boundaries**; it is not implemented here.
 
 ## Requirements and installation
 
@@ -272,3 +274,13 @@ Chapters 0 through 14 are implemented. The remaining entries describe direction,
 ## Safety and scope
 
 Never put real member information or credentials in this repository. All institutions, people, APIs, responses, and transactions in the laboratory must be fictional or deterministic simulations. Examples are educational and are not production security, compliance, legal, or architecture guidance.
+
+### Chapter 15 verification laboratory
+
+```bash
+./bin/digital-banking-lab verification member-0001
+./bin/digital-banking-lab verification-diagnostic member-0001
+./bin/digital-banking-lab fintech-evaluation clearverify
+```
+
+Harbor exposes `GET /api/members/{memberId}/verification` with only Harbor statuses. `POST /api/members/{memberId}/transfer-preview` now applies Harbor's fictional verification policy: verified members proceed, while review-required and not-verified members receive stable 409 workflow outcomes. Provider identifiers, vocabulary, references, and diagnostics are never public.

@@ -1,4 +1,4 @@
-import { ValidationError, type TransferApi } from './api';
+import { HarborApiError,ValidationError, type TransferApi } from './api';
 import type { TransferPreviewDto } from './contracts';
 
 export interface TransferFormModel { sourceAccountId:string; destinationAccountId:string; amount:string; memo:string; }
@@ -32,7 +32,10 @@ export class TransferForm {
     const fields=this.state.fields; const minorUnits=parseUsdAmountToMinorUnits(fields.amount)!;
     this.state={kind:'submitting',fields,errors:{}};this.changed();
     try { if(!this.api.previewTransfer)throw new Error('Transfer API unavailable'); const preview=await this.api.previewTransfer(this.memberId(),{sourceAccountId:fields.sourceAccountId,destinationAccountId:fields.destinationAccountId,amount:{currency:'USD',minorUnits},memo:fields.memo||null}); this.state={kind:'succeeded',fields,errors:{},preview}; }
-    catch(error){ if(error instanceof ValidationError)this.state={kind:'failed',fields,errors:error.fields}; else this.state={kind:'failed',fields,errors:{},generalError:'Transfer preview is temporarily unavailable.'}; }
+    catch(error){ if(error instanceof ValidationError)this.state={kind:'failed',fields,errors:error.fields};
+      else if(error instanceof HarborApiError&&error.code==='verification_review_required')this.state={kind:'failed',fields,errors:{},generalError:'Your verification requires review before this request can continue.'};
+      else if(error instanceof HarborApiError&&error.code==='member_verification_required')this.state={kind:'failed',fields,errors:{},generalError:'Verification is required before this request can continue.'};
+      else this.state={kind:'failed',fields,errors:{},generalError:'Transfer preview is temporarily unavailable.'}; }
     this.changed();
   }
 }

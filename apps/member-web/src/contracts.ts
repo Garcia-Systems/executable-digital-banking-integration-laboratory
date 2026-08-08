@@ -18,6 +18,8 @@ export interface MemberSummaryDto {
   status: string;
   accounts: AccountSummaryDto[];
 }
+export type VerificationStatusDto='verified'|'review_required'|'not_verified';
+export interface MemberVerificationDto { memberId:string;status:VerificationStatusDto; }
 
 export interface TransferAccountDto { accountId: string; displayName: string; }
 export interface TransferPreviewDto {
@@ -78,4 +80,10 @@ export function parseMemberSummary(value: unknown): MemberSummaryDto {
       };
     })
   };
+}
+
+export function parseMemberVerification(value:unknown):MemberVerificationDto {
+  const result=record(value),status=text(result.status);
+  if(!['verified','review_required','not_verified'].includes(status))throw new ContractError('Harbor returned an unexpected verification representation.');
+  return {memberId:text(result.memberId),status:status as VerificationStatusDto};
 }

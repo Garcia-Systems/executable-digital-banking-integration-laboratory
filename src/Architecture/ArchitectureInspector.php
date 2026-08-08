@@ -13,16 +13,20 @@ final readonly class ArchitectureInspector
     public function checks(): array
     {
         $domain = $this->sources('Domain');
-        $ports = $this->read('Application/DigitalBankingGateway.php') . $this->read('Application/AccountBalanceGateway.php');
+        $ports = $this->read('Application/DigitalBankingGateway.php') . $this->read('Application/AccountBalanceGateway.php').$this->read('Application/MemberVerificationGateway.php');
         $api = $this->sources('Api') . $this->sources('Http');
         $northstarAdapter = $this->read('Integration/Northstar/NorthstarDigitalBankingAdapter.php');
         $heritageAdapter = $this->read('Integration/Heritage/HeritageCoreBankingAdapter.php');
+        $preview=$this->read('Application/PreviewTransfer.php');$verification=$this->read('Application/GetMemberVerification.php');
 
         return [
             'Harbor domain contains no Northstar dependency' => !str_contains($domain, 'Northstar'),
             'Harbor domain contains no Heritage dependency' => !str_contains($domain, 'Heritage'),
+            'Harbor domain contains no ClearVerify dependency'=>!str_contains($domain,'ClearVerify'),
             'Harbor application ports expose Harbor-owned types' => $this->containsNone($ports, ['Guzzle', 'HttpResponse', 'array ', 'json', 'DOMDocument', 'SimpleXML', 'SoapTransport']),
-            'Harbor public API contains no vendor-model dependency' => $this->containsNone($api, ['Integration\\Northstar\\Model', 'Integration\\Heritage\\Model']),
+            'Harbor public API contains no vendor-model dependency' => $this->containsNone($api, ['Integration\\Northstar\\Model', 'Integration\\Heritage\\Model','Integration\\ClearVerify']),
+            'PreviewTransfer depends on verification port, not ClearVerify'=>str_contains($preview,'MemberVerificationGateway')&&!str_contains($preview,'ClearVerify'),
+            'GetMemberVerification depends on Harbor verification port'=>str_contains($verification,'MemberVerificationGateway')&&!str_contains($verification,'ClearVerify'),
             'Northstar transport remains below adapter boundary' => str_contains($northstarAdapter, 'NorthstarClient') && !str_contains($northstarAdapter, 'HttpClient'),
             'Heritage SOAP transport remains below adapter boundary' => str_contains($heritageAdapter, 'HeritageSoapClient') && !str_contains($heritageAdapter, 'SoapTransport'),
         ];

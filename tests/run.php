@@ -467,7 +467,7 @@ $test('integration catalog describes known integrations in stable order', functi
     $catalog = new IntegrationCatalog();
     $first = $catalog->all();
     $second = $catalog->all();
-    $assert(array_map(fn (IntegrationDescriptor $item) => $item->id, $first) === ['northstar-digital-banking', 'heritage-core-banking']);
+    $assert(array_map(fn (IntegrationDescriptor $item) => $item->id, $first) === ['clearverify-identity-services','heritage-core-banking','northstar-digital-banking']);
     $assert(serialize($first) === serialize($second));
     $assert($catalog->find('unknown') === null);
 });
@@ -512,7 +512,7 @@ $test('member use case is unchanged when composition swaps Northstar clients', f
 
 $test('Chapter 7 architecture inspection rules pass', function () use ($assert): void {
     $inspection = new ArchitectureInspector(dirname(__DIR__) . '/src');
-    $assert(count($inspection->checks()) === 6);
+    $assert(count($inspection->checks()) === 9);
     $assert($inspection->passes(), $inspection->render());
 });
 
@@ -768,6 +768,38 @@ $test('transfer preview state validation and upstream failures remain safe', fun
     $core=HttpKernelFactory::create('normal','temporary-unavailable')->dispatch('POST','/api/members/member-0001/transfer-preview',$body);
     $assert($timeout->status===504 && $core->status===503);
     $assert(!str_contains($timeout->body,'Northstar') && !str_contains($core->body,'Heritage'));
+});
+
+$test('ClearVerify client is deterministic, strict, and uses the vendor REST contract',function()use($assert):void{
+    $fixtures=dirname(__DIR__).'/fixtures/clearverify';
+    foreach(['verification-pass'=>'PASS','verification-review'=>'MANUAL_REVIEW','verification-fail'=>'FAIL'] as $scenario=>$status){
+        $http=new \Harbor\DigitalBankingLab\Integration\ClearVerify\DeterministicClearVerifyHttpClient($scenario,$fixtures);
+        $response=(new \Harbor\DigitalBankingLab\Integration\ClearVerify\ClearVerifyRestClient($http))->status(new \Harbor\DigitalBankingLab\Integration\ClearVerify\Model\ClearVerifySubjectId('CV-SUBJECT-'.($status==='MANUAL_REVIEW'?'7102':($status==='FAIL'?'7103':'7101'))));
+        $assert($response->status===$status);$request=$http->requests()[0];$assert($request['method']==='GET'&&str_ends_with($request['url'],'/v1/verification-subjects/'.$response->subjectId->value.'/status'));
+    }
+    $expected=['verification-timeout'=>IntegrationFailureCategory::TIMEOUT,'verification-unavailable'=>IntegrationFailureCategory::TEMPORARY_UNAVAILABLE,'verification-http-error'=>IntegrationFailureCategory::EXTERNAL_ERROR,'verification-malformed-json'=>IntegrationFailureCategory::INVALID_EXTERNAL_RESPONSE,'verification-incomplete-response'=>IntegrationFailureCategory::INVALID_EXTERNAL_RESPONSE];
+    foreach($expected as $scenario=>$category)try{(new LaboratoryApplicationFactory(dirname(__DIR__)))->getMemberVerification($scenario)->execute(new MemberId('member-0001'));$assert(false);}catch(IntegrationFailure $failure){$assert($failure->category===$category&&str_starts_with($failure->diagnosticCode,'CLEARVERIFY_'));}
+});
+
+$test('ClearVerify adapter keeps identity and vocabulary at boundary',function()use($assert):void{
+    $factory=new LaboratoryApplicationFactory(dirname(__DIR__));
+    $assert($factory->getMemberVerification('verification-pass')->execute(new MemberId('member-0001'))->status->value==='VERIFIED');
+    $assert($factory->getMemberVerification('verification-review')->execute(new MemberId('member-0002'))->status->value==='REVIEW_REQUIRED');
+    $result=$factory->getMemberVerification('verification-fail')->execute(new MemberId('member-0003'));
+    $assert($result->memberId->value==='member-0003'&&$result->status->value==='NOT_VERIFIED'&&!property_exists($result,'reference'));
+    try{$factory->getMemberVerification('verification-unsupported-status')->execute(new MemberId('member-0001'));$assert(false);}catch(IntegrationFailure $failure){$assert($failure->category===IntegrationFailureCategory::UNSUPPORTED_EXTERNAL_VALUE&&$failure->diagnosticCode==='CLEARVERIFY_UNSUPPORTED_STATUS');}
+});
+
+$test('verification API and transfer policy expose only Harbor outcomes',function()use($assert):void{
+    $verified=HttpKernelFactory::create()->dispatch('GET','/api/members/member-0001/verification');$assert($verified->status===200&&trim($verified->body)==='{"memberId":"member-0001","status":"verified"}');
+    foreach(['PASS','MANUAL_REVIEW','CV-SUBJECT','CV-REF','CLEARVERIFY'] as $term)$assert(!str_contains(strtoupper($verified->body),$term));
+    $body=json_encode(['sourceAccountId'=>'account-0001','destinationAccountId'=>'account-0002','amount'=>['currency'=>'USD','minorUnits'=>1]],JSON_THROW_ON_ERROR);
+    $review=HttpKernelFactory::create('normal','normal','verification-review')->dispatch('POST','/api/members/member-0001/transfer-preview',$body);
+    $failed=HttpKernelFactory::create('normal','normal','verification-fail')->dispatch('POST','/api/members/member-0001/transfer-preview',$body);
+    $timeout=HttpKernelFactory::create('normal','normal','verification-timeout')->dispatch('POST','/api/members/member-0001/transfer-preview',$body);
+    $assert($review->status===409&&str_contains($review->body,'verification_review_required'));
+    $assert($failed->status===409&&str_contains($failed->body,'member_verification_required'));
+    $assert($timeout->status===504&&!str_contains($timeout->body,'CLEARVERIFY'));
 });
 
 $failures = 0;

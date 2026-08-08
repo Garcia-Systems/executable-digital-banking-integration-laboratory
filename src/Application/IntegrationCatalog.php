@@ -9,7 +9,7 @@ final readonly class IntegrationCatalog
     /** @return list<IntegrationDescriptor> */
     public function all(): array
     {
-        return [
+        $integrations = [
             new IntegrationDescriptor(
                 'northstar-digital-banking', 'Northstar Digital Banking', 'Member lookup',
                 'DigitalBankingGateway', 'NorthstarDigitalBankingAdapter',
@@ -24,7 +24,16 @@ final readonly class IntegrationCatalog
                 'Harbor Capability → AccountBalanceGateway → HeritageCoreBankingAdapter → HeritageSoapClient → SOAP/XML → Heritage Core Banking',
                 'SOAP XML → Heritage model → Adapter translation → Harbor AccountBalanceDetails',
             ),
+            new IntegrationDescriptor(
+                'clearverify-identity-services','ClearVerify Identity Services','Member verification',
+                'MemberVerificationGateway','ClearVerifyMemberVerificationAdapter','ClearVerifyRestClient',
+                'REST / HTTP','JSON',true,'MemberVerificationResult',
+                'Harbor Capability → MemberVerificationGateway → ClearVerifyMemberVerificationAdapter → ClearVerifyRestClient → REST/JSON → ClearVerify',
+                'ClearVerify response → Adapter translation → Harbor MemberVerificationResult',
+            ),
         ];
+        usort($integrations,fn(IntegrationDescriptor $a,IntegrationDescriptor $b)=>$a->id<=>$b->id);
+        return $integrations;
     }
 
     public function find(string $id): ?IntegrationDescriptor

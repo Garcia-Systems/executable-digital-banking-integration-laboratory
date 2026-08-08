@@ -33,10 +33,10 @@ export function renderMemberPage(root: HTMLElement, state: MemberPageState, page
     const member = state.member;
     const introduction = `<p class="request-status" role="status">Loaded member information.</p><section class="member-heading" aria-labelledby="member-name"><p class="eyebrow">Member overview</p><h2 id="member-name">Welcome, ${escapeHtml(member.name)}</h2><p>Membership status: <strong>${displayLabel(member.status)}</strong></p></section>`;
     if (state.kind === 'empty') {
-      content = `${introduction}<section class="state-panel" aria-labelledby="accounts-title"><h2 id="accounts-title">Your accounts</h2><p>You don’t have any accounts available in digital banking.</p></section>`;
+      content = `${introduction}${verification(page)}<section class="state-panel" aria-labelledby="accounts-title"><h2 id="accounts-title">Your accounts</h2><p>You don’t have any accounts available in digital banking.</p></section>`;
     } else {
       const cards = member.accounts.map(account => `<article class="account-card" data-account-id="${escapeHtml(account.accountId)}"><h3>${escapeHtml(account.displayName)}</h3><p class="account-type">${displayLabel(account.type)}</p><p class="balance"><span class="sr-only">Digital banking balance: </span>${escapeHtml(account.balance.formatted)}</p><p>Account status: <strong>${displayLabel(account.status)}</strong></p></article>`).join('');
-      content = `${introduction}<section aria-labelledby="accounts-title"><h2 id="accounts-title">Your accounts</h2><div class="account-grid">${cards}</div></section>${transferForm(page, member.accounts)}`;
+      content = `${introduction}${verification(page)}<section aria-labelledby="accounts-title"><h2 id="accounts-title">Your accounts</h2><div class="account-grid">${cards}</div></section>${transferForm(page, member.accounts)}`;
     }
   }
 
@@ -47,6 +47,14 @@ export function renderMemberPage(root: HTMLElement, state: MemberPageState, page
   root.querySelector<HTMLButtonElement>('#retry')?.addEventListener('click', () => void page.retry());
   root.querySelector<HTMLFormElement>('#transfer-form')?.addEventListener('submit', event => { event.preventDefault(); void page.transfer.submit(); });
   for (const field of ['sourceAccountId','destinationAccountId','amount','memo'] as const) root.querySelector<HTMLInputElement|HTMLSelectElement>(`[name="${field}"]`)?.addEventListener('input',event=>page.transfer.update(field,(event.currentTarget as HTMLInputElement|HTMLSelectElement).value));
+}
+
+function verification(page:MemberPage):string{
+  const state=page.verification;if(state.kind==='loading')return '<section aria-labelledby="verification-title"><h2 id="verification-title">Verification</h2><p>Loading verification status…</p></section>';
+  if(state.kind==='error')return '<section aria-labelledby="verification-title"><h2 id="verification-title">Verification</h2><p>Verification status is temporarily unavailable.</p></section>';
+  if(state.kind!=='loaded'||!state.result)return '';
+  const label={verified:'Verified',review_required:'Verification review required',not_verified:'Verification required'}[state.result.status];
+  return `<section aria-labelledby="verification-title"><h2 id="verification-title">Verification</h2><p>${label}</p></section>`;
 }
 
 function transferForm(page:MemberPage,accounts:{accountId:string;displayName:string}[]):string {

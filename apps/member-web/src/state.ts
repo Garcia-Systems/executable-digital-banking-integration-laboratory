@@ -1,5 +1,6 @@
 import { RequestAbortedError, type MemberApi } from './api';
 import { ContractError, type MemberSummaryDto } from './contracts';
+import type { MemberVerificationDto } from './contracts';
 import { TransferForm } from './transfer';
 
 export type RequestId = `request-${string}`;
@@ -42,6 +43,7 @@ export class MemberPage {
   private listener: (state: MemberPageState) => void = () => undefined;
   private active?: { requestId: RequestId; controller: AbortController };
   readonly transfer: TransferForm;
+  verification:{kind:'idle'|'loading'|'loaded'|'error';result?:MemberVerificationDto}={kind:'idle'};
 
   constructor(
     private readonly api: MemberApi,
@@ -71,6 +73,7 @@ export class MemberPage {
     this.active = { requestId, controller };
     this.trace.record(`${requestId} START ${memberId}`);
     this.transition({ type: 'REQUEST_STARTED', requestId, requestedMemberId: memberId });
+    this.verification=this.api.getVerification?{kind:'loading'}:{kind:'idle'};
 
     try {
       const member = await this.api.getMember(memberId, controller.signal);
@@ -81,6 +84,11 @@ export class MemberPage {
       if (member.memberId !== memberId) throw new ContractError('Member response did not match the request.');
       this.trace.record(`${requestId} SUCCESS`);
       this.transition({ type: 'REQUEST_SUCCEEDED', requestId, requestedMemberId: memberId, member });
+      if(this.api.getVerification){
+        try{const verification=await this.api.getVerification(memberId,controller.signal);if(this.isCurrent(requestId)&&verification.memberId===memberId)this.verification={kind:'loaded',result:verification};}
+        catch(error){if(this.isCurrent(requestId)&&!controller.signal.aborted)this.verification={kind:'error'};}
+        if(this.isCurrent(requestId))this.listener(this.state);
+      }
     } catch (error: unknown) {
       if (!this.isCurrent(requestId)) {
         this.trace.record(`${requestId} STALE_FAILURE_IGNORED`);
