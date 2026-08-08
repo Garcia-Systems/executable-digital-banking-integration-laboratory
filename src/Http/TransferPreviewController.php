@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace Harbor\DigitalBankingLab\Http;
 
 use Harbor\DigitalBankingLab\Api\{ApiError, IntegrationFailureApiMapper, TransferPreviewPresenter};
-use Harbor\DigitalBankingLab\Application\{IntegrationFailure, PreviewTransfer, PreviewTransferCommand, TransferValidationFailed};
+use Harbor\DigitalBankingLab\Application\{IntegrationFailure, PreviewTransfer, PreviewTransferCommand,TransferPreviewBlocked,TransferPreviewBlockReason, TransferValidationFailed};
 use Harbor\DigitalBankingLab\Domain\Member\{AccountId, MemberId, Money};
 
 final readonly class TransferPreviewController
@@ -23,6 +23,10 @@ final readonly class TransferPreviewController
             return Response::json(200, $this->presenter->present($this->service->execute($command)));
         } catch (TransferValidationFailed $failure) {
             return $this->validation($failure->fields);
+        } catch (TransferPreviewBlocked $blocked) {
+            return $blocked->reason===TransferPreviewBlockReason::VERIFICATION_REVIEW_REQUIRED
+                ? Response::json(409,['error'=>['code'=>'verification_review_required','message'=>'Member verification requires review before this action can continue.']])
+                : Response::json(409,['error'=>['code'=>'member_verification_required','message'=>'Member verification is required before this action can continue.']]);
         } catch (IntegrationFailure $failure) {
             $mapping = $this->failures->map($failure);
             return Response::json($mapping['status'], $mapping['error']->toArray());

@@ -1,4 +1,4 @@
-import { ContractError, parseMemberSummary, parseTransferPreview, type MemberSummaryDto, type TransferPreviewDto } from './contracts';
+import { ContractError, parseMemberSummary,parseMemberVerification, parseTransferPreview,type MemberVerificationDto, type MemberSummaryDto, type TransferPreviewDto } from './contracts';
 
 export class HarborApiError extends Error {
   readonly kind = 'http';
@@ -35,6 +35,7 @@ type ErrorBody = { code?: unknown; message?: unknown };
 
 export interface MemberApi {
   getMember(memberId: string, signal?: AbortSignal): Promise<MemberSummaryDto>;
+  getVerification?(memberId:string,signal?:AbortSignal):Promise<MemberVerificationDto>;
 }
 export interface TransferApi { previewTransfer(memberId:string, request:TransferPreviewRequest):Promise<TransferPreviewDto>; }
 export interface TransferPreviewRequest { sourceAccountId:string; destinationAccountId:string; amount:{currency:'USD';minorUnits:number}; memo:string|null; }
@@ -71,6 +72,13 @@ export class HarborApiClient implements MemberApi {
       );
     }
     return parseMemberSummary(body);
+  }
+
+  async getVerification(memberId:string,signal?:AbortSignal):Promise<MemberVerificationDto>{
+    const url=`${this.baseUrl.replace(/\/$/,'')}/api/members/${encodeURIComponent(memberId)}/verification`;let response:Response;
+    try{response=await this.request(url,{method:'GET',headers:{Accept:'application/json'},signal});}catch(error){if(isAbortFailure(error,signal))throw new RequestAbortedError();throw new NetworkError();}
+    let body:unknown;try{body=await response.json();}catch{throw response.ok?new ContractError('Harbor returned malformed JSON.'):new HarborApiError(response.status);}
+    if(!response.ok)throw new HarborApiError(response.status);return parseMemberVerification(body);
   }
 
   async previewTransfer(memberId:string, requestBody:TransferPreviewRequest):Promise<TransferPreviewDto> {

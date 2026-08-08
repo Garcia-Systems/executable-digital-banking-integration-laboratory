@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Harbor\DigitalBankingLab\Composition;
 
-use Harbor\DigitalBankingLab\Application\{AccountBalanceGateway, ActivityPolicy, ApplicationTrace, DigitalBankingGateway, GetAccountBalanceDetails, GetMemberActivityProfile, GetMemberFinancialOverview, GetMemberSummary, MemberNotFoundGateway, PreviewTransfer};
+use Harbor\DigitalBankingLab\Application\{AccountBalanceGateway, ActivityPolicy, ApplicationTrace, DigitalBankingGateway, GetAccountBalanceDetails, GetMemberActivityProfile, GetMemberFinancialOverview, GetMemberSummary, GetMemberVerification, MemberNotFoundGateway, MemberVerificationGateway, PreviewTransfer};
 use Harbor\DigitalBankingLab\Domain\SequenceIdGenerator;
 use Harbor\DigitalBankingLab\Infrastructure\Database\{LaboratoryDatabase,SqlMemberActivityRepository};
 
@@ -13,6 +13,7 @@ use Harbor\DigitalBankingLab\Infrastructure\Soap\DeterministicHeritageSoapTransp
 use Harbor\DigitalBankingLab\Integration\VendorIdentityMap;
 use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, HeritageIdentityMap, HeritageSoapClient, HeritageSoapEnvelopeBuilder};
 use Harbor\DigitalBankingLab\Integration\Northstar\{DeterministicNorthstarClient, NorthstarDigitalBankingAdapter, NorthstarRestClient, NorthstarTranslator};
+use Harbor\DigitalBankingLab\Integration\ClearVerify\{ClearVerifyIdentityMap,ClearVerifyMemberVerificationAdapter,ClearVerifyRestClient,DeterministicClearVerifyHttpClient};
 
 /** The composition root: this outer layer alone chooses concrete integration adapters. */
 final readonly class LaboratoryApplicationFactory
@@ -53,8 +54,16 @@ final readonly class LaboratoryApplicationFactory
         return new GetMemberActivityProfile(new SqlMemberActivityRepository(LaboratoryDatabase::create($this->projectRoot)),$policy??ActivityPolicy::laboratoryDefault());
     }
 
-    public function previewTransfer(string $northstarScenario = 'normal', string $heritageScenario = 'normal'): PreviewTransfer
+    public function memberVerificationGateway(string $scenario='verification-pass'):MemberVerificationGateway
     {
-        return new PreviewTransfer($this->digitalBankingGateway(true, $northstarScenario), $this->accountBalanceGateway($heritageScenario), new SequenceIdGenerator('preview-'));
+        $http=new DeterministicClearVerifyHttpClient($scenario,$this->projectRoot.'/fixtures/clearverify');
+        return new ClearVerifyMemberVerificationAdapter(new ClearVerifyRestClient($http),ClearVerifyIdentityMap::laboratory());
+    }
+
+    public function getMemberVerification(string $scenario='verification-pass'):GetMemberVerification { return new GetMemberVerification($this->memberVerificationGateway($scenario)); }
+
+    public function previewTransfer(string $northstarScenario = 'normal', string $heritageScenario = 'normal', string $verificationScenario='verification-pass'): PreviewTransfer
+    {
+        return new PreviewTransfer($this->digitalBankingGateway(true, $northstarScenario), $this->accountBalanceGateway($heritageScenario), new SequenceIdGenerator('preview-'), $this->memberVerificationGateway($verificationScenario));
     }
 }
