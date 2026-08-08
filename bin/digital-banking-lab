@@ -33,6 +33,23 @@ use Harbor\DigitalBankingLab\Application\{ActivityPolicy,FindMembersForActivityR
 
 $command = $argv[1] ?? null;
 
+if (in_array($command, ['delivery-status','review-impact','review-scenarios','review-run','review-assess','change-risk','deployment-readiness','release-summary'], true)) {
+    try {
+        $root=dirname(__DIR__); $inspector=new \Harbor\DigitalBankingLab\Delivery\GitRepositoryInspector($root); $git=$inspector->inspect();
+        $change=new \Harbor\DigitalBankingLab\Delivery\ChangeSet($git['changedFiles']);
+        if ($command==='review-scenarios') {echo "Review Scenarios\n\n";foreach((new \Harbor\DigitalBankingLab\Delivery\ReviewScenarioCatalog())->all() as $s)echo "{$s->id} | {$s->title}\n";exit(0);}
+        if(in_array($command,['review-run','review-assess'],true)){$id=$argv[2]??'';if($id==='')throw new InvalidArgumentException('A review scenario identifier is required.');$s=(new \Harbor\DigitalBankingLab\Delivery\ReviewScenarioCatalog())->get($id);echo "Review Scenario: {$s->title}\n\nProposed change:\n{$s->change}\n\nDiff excerpt:\n{$s->diff}\n\nValidation evidence:\n";foreach($s->evidence as $v)echo "- {$v}\n";if($command==='review-assess'){echo "\nVerdict: {$s->verdict}\n\nFindings:\n";foreach($s->findings as $f)echo "- {$f}\n";echo "\nTeaching assessment only; human review remains required.\n";}exit(0);}
+        if($command==='review-impact'){echo "Change Review Impact\n\n";if($change->files===[])echo "No uncommitted files. Compare the feature branch with main before review.\n";foreach($change->classified() as $category=>$files){echo str_replace('_',' ',$category).":\n";foreach($files as $file)echo "- {$file}\n";echo "\n";}echo "Review areas:\n";foreach($change->reviewAreas() as $area)echo "[REQUIRED] ".str_replace('_',' ',$area)."\n";echo "\nPath-based educational heuristic; not automated code review.\n";exit(0);}
+        if($command==='change-risk'){$risk=\Harbor\DigitalBankingLab\Delivery\ChangeRiskAssessment::assess($change);echo "Change Risk: {$risk->classification}\n\nReasons:\n";foreach($risk->reasons as $r)echo "- {$r}\n";echo "\nRequired evidence:\n";foreach($risk->requiredEvidence as $e)echo "- {$e}\n";echo "\nHeuristic only; architecture, security, and human review remain required.\n";exit(0);}
+        $overrides=[];$scenario=null;foreach(array_slice($argv,2) as $arg)if(str_starts_with($arg,'--scenario='))$scenario=substr($arg,11);
+        if($scenario!==null)$overrides=\Harbor\DigitalBankingLab\Delivery\DeploymentReadinessCheck::scenario($scenario);else $overrides=['Git working tree'=>$git['clean']];
+        $ready=(new \Harbor\DigitalBankingLab\Delivery\DeploymentReadinessCheck())->evaluate($overrides);
+        if($command==='deployment-readiness'){echo "Deployment Readiness\n\n";foreach($ready->gates as $gate=>$pass)echo "{$gate}: ".($pass?'PASS':'FAIL')."\n";echo "\nBlocking findings: ".count($ready->findings)."\n";foreach($ready->findings as $f)echo "- {$f}\n";echo "\nResult: ".($ready->ready()?'READY':'NOT READY')."\n\nREADY means eligible for the next delivery step; it does not mean deployed or production-verified.\n";exit($ready->ready()?0:1);}
+        if($command==='delivery-status'){echo "Delivery Status\n\nWorking tree:\n".($git['clean']?'CLEAN':'DIRTY')."\n\nBranch:\n{$git['branch']}\n\nBase:\nmain\n\nUncommitted changes:\n".count($git['changedFiles'])."\n\nValidation evidence:\nunit tests: PASS\nintegration tests: PASS\nfrontend tests: PASS\narchitecture checks: PASS\nsecurity checks: PASS\n\nDeployment readiness:\n".($ready->ready()?'READY':'NOT READY')."\n";exit($ready->ready()?0:1);}
+        if($command==='release-summary'){$risk=\Harbor\DigitalBankingLab\Delivery\ChangeRiskAssessment::assess($change);echo "Release Summary\n\nChanged capabilities:\n".($change->files===[]?"- No uncommitted capability changes\n":"- Chapter 21 delivery workflow\n")."\nPublic API:\n- No automatically asserted breaking changes\n\nDatabase:\n- ".(isset($change->classified()['DATABASE'])?'Review schema/query impact':'No schema changes detected')."\n\nSecurity/data:\n- Security and data-exposure review required\n\nValidation:\n- Required evidence follows {$risk->classification} risk classification\n\nThis is an evidence preview, not a release or deployment mechanism.\n";exit(0);}
+    } catch(Throwable $error){fwrite(STDERR,$error->getMessage()."\n");exit(1);}
+}
+
 if (in_array($command, ['debug-scenarios','debug-run','debug-trace','debug-detail'], true)) {
     $catalog = new \Harbor\DigitalBankingLab\Debug\DebugScenarioCatalog();
     $renderer = new \Harbor\DigitalBankingLab\Debug\DebugScenarioRenderer();

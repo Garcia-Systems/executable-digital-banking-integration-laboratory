@@ -1,0 +1,23 @@
+name: Validate
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  laboratory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: composer install --no-interaction --prefer-dist
+      - run: npm install --no-audit --no-fund
+        working-directory: apps/member-web
+      - run: ./bin/verify
+      - run: ./bin/digital-banking-lab architecture-check
+      - run: ./bin/digital-banking-lab security-check
+      - run: ./bin/digital-banking-lab api-data-check
