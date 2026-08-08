@@ -25,7 +25,9 @@ use Harbor\DigitalBankingLab\Http\HttpKernelFactory;
 use Harbor\DigitalBankingLab\Infrastructure\Http\DeterministicHttpClient;
 use Harbor\DigitalBankingLab\Integration\Northstar\NorthstarRestClient;
 use Harbor\DigitalBankingLab\Integration\Northstar\Exception\{NorthstarCustomerNotFound, NorthstarHttpFailure, NorthstarResponseDecodingFailure, NorthstarTimeoutFailure, NorthstarUnavailableFailure};
-use Harbor\DigitalBankingLab\Application\{CoreBankingGateway, GetAccountBalanceDetails};
+use Harbor\DigitalBankingLab\Application\{AccountBalanceGateway, GetAccountBalanceDetails, IntegrationCatalog, IntegrationDescriptor};
+use Harbor\DigitalBankingLab\Architecture\ArchitectureInspector;
+use Harbor\DigitalBankingLab\Composition\LaboratoryApplicationFactory;
 use Harbor\DigitalBankingLab\Domain\Member\AccountBalanceDetails;
 use Harbor\DigitalBankingLab\Infrastructure\Soap\DeterministicHeritageSoapTransport;
 use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, HeritageIdentityMap, HeritageSoapClient, HeritageSoapEnvelopeBuilder};
@@ -440,7 +442,7 @@ $test('Heritage adapter rejects unsupported status and currency', function () us
 });
 
 $test('GetAccountBalanceDetails depends only on a Harbor-owned gateway', function () use ($assert): void {
-    $gateway = new class implements CoreBankingGateway {
+    $gateway = new class implements AccountBalanceGateway {
         public function accountBalanceDetails(AccountId $id): AccountBalanceDetails { return new AccountBalanceDetails($id, Money::usd(1), Money::usd(1), AccountStatus::CLOSED); }
     };
     $details = (new GetAccountBalanceDetails($gateway))->execute(new AccountId('account-test'));
@@ -455,6 +457,59 @@ $test('Harbor domain and application source do not depend on Heritage SOAP or XM
             foreach (['Integration\\Heritage', 'Infrastructure\\Soap', 'DOMDocument', 'SimpleXML', 'soap:'] as $forbidden) $assert(!str_contains($source, $forbidden), "Boundary leak in {$file->getPathname()}: {$forbidden}");
         }
     }
+});
+
+$test('integration catalog describes known integrations in stable order', function () use ($assert): void {
+    $catalog = new IntegrationCatalog();
+    $first = $catalog->all();
+    $second = $catalog->all();
+    $assert(array_map(fn (IntegrationDescriptor $item) => $item->id, $first) === ['northstar-digital-banking', 'heritage-core-banking']);
+    $assert(serialize($first) === serialize($second));
+    $assert($catalog->find('unknown') === null);
+});
+
+$test('integration descriptors preserve transport and Harbor result differences', function () use ($assert): void {
+    $catalog = new IntegrationCatalog();
+    $northstar = $catalog->find('northstar-digital-banking');
+    $heritage = $catalog->find('heritage-core-banking');
+    $assert($northstar?->transport === 'REST / HTTP' && $northstar->encoding === 'JSON' && $northstar->harborResult === 'Member');
+    $assert($heritage?->transport === 'SOAP' && $heritage->encoding === 'XML' && $heritage->harborResult === 'AccountBalanceDetails');
+    $assert($northstar->port === 'DigitalBankingGateway' && $heritage->port === 'AccountBalanceGateway');
+    $assert($northstar->identityMappingRequired && $heritage->identityMappingRequired);
+});
+
+$test('Harbor-owned ports expose only typed Harbor inputs and outputs', function () use ($assert): void {
+    foreach ([DigitalBankingGateway::class, AccountBalanceGateway::class] as $port) {
+        foreach ((new ReflectionClass($port))->getMethods() as $method) {
+            $types = [$method->getReturnType(), ...array_map(fn (ReflectionParameter $parameter) => $parameter->getType(), $method->getParameters())];
+            foreach ($types as $type) {
+                $name = $type instanceof ReflectionNamedType ? $type->getName() : '';
+                $assert(str_starts_with($name, 'Harbor\\DigitalBankingLab\\Domain\\'), "Transport type leaked through {$port}");
+                foreach (['Guzzle', 'array', 'json', 'soap', 'xml', 'DOMDocument', 'SimpleXML'] as $forbidden) $assert(stripos($name, $forbidden) === false);
+            }
+        }
+    }
+});
+
+$test('composition root wires adapters to their distinct Harbor capabilities', function () use ($assert): void {
+    $factory = new LaboratoryApplicationFactory(dirname(__DIR__));
+    $assert($factory->digitalBankingGateway() instanceof DigitalBankingGateway);
+    $assert($factory->digitalBankingGateway() instanceof NorthstarDigitalBankingAdapter);
+    $assert($factory->accountBalanceGateway() instanceof AccountBalanceGateway);
+    $assert($factory->accountBalanceGateway() instanceof HeritageCoreBankingAdapter);
+});
+
+$test('member use case is unchanged when composition swaps Northstar clients', function () use ($assert): void {
+    $factory = new LaboratoryApplicationFactory(dirname(__DIR__));
+    $restMember = $factory->getMemberSummary(true)->execute(new MemberId('member-0001'));
+    $directMember = $factory->getMemberSummary(false)->execute(new MemberId('member-0001'));
+    $assert((new MemberDomainComparator())->equivalent($restMember, $directMember));
+});
+
+$test('Chapter 7 architecture inspection rules pass', function () use ($assert): void {
+    $inspection = new ArchitectureInspector(dirname(__DIR__) . '/src');
+    $assert(count($inspection->checks()) === 6);
+    $assert($inspection->passes(), $inspection->render());
 });
 
 $failures = 0;

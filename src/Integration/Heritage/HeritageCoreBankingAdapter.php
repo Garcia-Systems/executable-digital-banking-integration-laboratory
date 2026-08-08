@@ -2,11 +2,11 @@
 declare(strict_types=1);
 namespace Harbor\DigitalBankingLab\Integration\Heritage;
 
-use Harbor\DigitalBankingLab\Application\CoreBankingGateway;
+use Harbor\DigitalBankingLab\Application\AccountBalanceGateway;
 use Harbor\DigitalBankingLab\Domain\Member\{AccountBalanceDetails, AccountId, AccountStatus, Money};
 use Harbor\DigitalBankingLab\Integration\VendorTranslationException;
 
-final readonly class HeritageCoreBankingAdapter implements CoreBankingGateway
+final readonly class HeritageCoreBankingAdapter implements AccountBalanceGateway
 {
     public function __construct(private HeritageSoapClient $client, private HeritageIdentityMap $identities) {}
     public function accountBalanceDetails(AccountId $accountId): AccountBalanceDetails
