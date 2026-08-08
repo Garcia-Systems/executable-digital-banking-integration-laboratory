@@ -24,6 +24,10 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 1: Building a Deterministic Integration Laboratory](chapters/01-deterministic-integration-laboratory.md) adds controlled clocks, identifiers, scenario fixtures, and simulated vendor states. This foundation comes before REST, SOAP, databases, and frontend behavior so later integration lessons remain repeatable without live infrastructure. See its [Mermaid architecture diagram](diagrams/deterministic-laboratory.md).
 
+[Chapter 2: Modeling the Member Domain](chapters/02-member-domain-modeling.md) defines Harbor's internal Member, Account, typed identifiers and statuses, and integer-minor-unit Money. Vendor representations remain outside this boundary. See the [member domain diagram](diagrams/member-domain-model.md).
+
+The repository now has three conceptual layers: Chapter 0 maps the **system landscape**, Chapter 1 supplies **deterministic laboratory infrastructure**, and Chapter 2 defines **Harbor's internal member domain**.
+
 ## Requirements and installation
 
 - PHP 8.2 or newer
@@ -74,6 +78,12 @@ Verify that two independently constructed runs have the same observable result:
 ./bin/digital-banking-lab determinism normal-operation
 ```
 
+Render the deterministic Chapter 2 member summary:
+
+```bash
+./bin/digital-banking-lab member member-0001
+```
+
 Run all tests:
 
 ```bash
@@ -96,13 +106,15 @@ tests/        Dependency-free executable architecture tests
 
 Future chapters will extend these same boundaries rather than replacing them: protocols become simulated adapters, application behavior gains services and persistence, and member channels gain TypeScript and web experiences.
 
+The next stage asks: **How should Harbor isolate its internal domain from vendor-owned platform models?** Chapter 3 will address that boundary; it is not implemented here.
+
 ## Roadmap
 
-Chapters 0 and 1 are implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0, 1, and 2 are implemented. The remaining entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
-3. **Member domain modeling** — safe fictional member and account value objects
+3. **Member domain modeling** — safe fictional member and account value objects (Chapter 2 — implemented)
 4. **Vendor platform boundaries** — contracts and division of responsibility
 5. **REST API fundamentals** — resources, methods, status codes, and schemas
 6. **Consuming vendor REST APIs** — deterministic vendor API clients

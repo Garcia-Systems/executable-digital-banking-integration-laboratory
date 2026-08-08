@@ -7,8 +7,11 @@ require dirname(__DIR__) . '/bootstrap.php';
 
 use Harbor\DigitalBankingLab\Application\EcosystemRenderer;
 use Harbor\DigitalBankingLab\Application\LaboratoryRenderer;
+use Harbor\DigitalBankingLab\Application\MemberSummaryRenderer;
+use Harbor\DigitalBankingLab\Domain\Member\MemberId;
 use Harbor\DigitalBankingLab\Fixtures\HarborEcosystemFixture;
 use Harbor\DigitalBankingLab\Fixtures\LaboratoryFixtureFactory;
+use Harbor\DigitalBankingLab\Fixtures\MemberFixtureFactory;
 
 $command = $argv[1] ?? null;
 $renderer = new EcosystemRenderer();
@@ -21,6 +24,20 @@ if ($command === 'ecosystem') {
 if ($command === 'path') {
     echo $renderer->renderMemberWebPath($ecosystem);
     exit(0);
+}
+if ($command === 'member') {
+    $memberIdentifier = $argv[2] ?? null;
+    if ($memberIdentifier === null) {
+        fwrite(STDERR, "A member identifier is required.\n");
+        exit(1);
+    }
+    try {
+        echo (new MemberSummaryRenderer())->render(MemberFixtureFactory::find(new MemberId($memberIdentifier)));
+        exit(0);
+    } catch (InvalidArgumentException $error) {
+        fwrite(STDERR, $error->getMessage() . "\n");
+        exit(1);
+    }
 }
 if ($command === 'laboratory' || $command === 'determinism') {
     $scenarioIdentifier = $argv[2] ?? null;
@@ -46,5 +63,5 @@ if ($command === 'laboratory' || $command === 'determinism') {
     }
 }
 
-fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO>\n");
+fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID>\n");
 exit(1);
