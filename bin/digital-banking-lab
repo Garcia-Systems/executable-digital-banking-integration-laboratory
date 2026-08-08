@@ -33,6 +33,20 @@ use Harbor\DigitalBankingLab\Application\{ActivityPolicy,FindMembersForActivityR
 
 $command = $argv[1] ?? null;
 
+if (in_array($command, ['debug-scenarios','debug-run','debug-trace','debug-detail'], true)) {
+    $catalog = new \Harbor\DigitalBankingLab\Debug\DebugScenarioCatalog();
+    $renderer = new \Harbor\DigitalBankingLab\Debug\DebugScenarioRenderer();
+    try {
+        if ($command === 'debug-scenarios') echo $renderer->catalog($catalog);
+        else {
+            $id=$argv[2]??''; if($id==='') throw new InvalidArgumentException('A debug scenario identifier is required.');
+            $scenario=(new \Harbor\DigitalBankingLab\Debug\DebugApplicationFactory($catalog))->scenario($id);
+            echo match($command){'debug-run'=>$renderer->run($scenario),'debug-trace'=>$renderer->trace($scenario),'debug-detail'=>$renderer->detail($scenario)};
+        }
+        exit(0);
+    } catch (InvalidArgumentException $error) { fwrite(STDERR,$error->getMessage()."\n"); exit(1); }
+}
+
 if ($command === 'integration-test-inventory') {
     echo "Harbor Integration Test Inventory\n\nHTTP\n- GET member summary\n- GET financial overview\n- GET verification\n- POST transfer preview\n\nDatabase\n- member/account fixture loading\n- activity projection\n- inactive member query\n\nNorthstar\n- REST JSON → Northstar model → Harbor Member\n\nHeritage\n- SOAP XML → Heritage model → Harbor AccountBalanceDetails\n\nClearVerify\n- REST JSON → verification adapter → Harbor status\n\nComposition\n- Harbor application wiring\n";
     exit(0);

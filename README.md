@@ -60,7 +60,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 19: Integration Testing Across Harbor Boundaries](chapters/19-integration-testing.md) makes selected collaborations real across HTTP, SQLite, REST/JSON, SOAP/XML, adapters, and frontend runtime contracts while deterministic transports keep live vendors outside the suite. See the [integration testing boundaries diagram](diagrams/integration-testing-boundaries.md).
 
-The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves; Chapter 18 isolates meaningful behavior; Chapter 19 verifies that selected real components agree.
+[Chapter 20: Debugging the Full Stack](chapters/20-full-stack-debugging.md) adds deterministic, isolated fault laboratories for tracing symptoms to the first divergent browser, HTTP, application, integration, presentation, or SQL boundary. See the [full-stack debugging diagram](diagrams/full-stack-debugging.md).
+
+The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves; Chapter 18 isolates meaningful behavior; Chapter 19 verifies that selected real components agree; Chapter 20 uses boundary evidence to locate the cause of a propagated symptom.
 
 ## Requirements and installation
 
@@ -275,9 +277,22 @@ curl -i -X POST http://127.0.0.1:8080/api/members/member-0001/transfer-preview \
   --data '{"sourceAccountId":"account-0001","destinationAccountId":"account-0002","amount":{"currency":"USD","minorUnits":50000},"memo":"Move to savings"}'
 ```
 
+## Debugging Laboratory
+
+Chapter 20 scenarios intentionally replace exactly one component in a separate debug composition root. They are deterministic teaching fixtures and do not change normal Harbor behavior. Start with the observable symptom, then trace boundaries until expected and actual behavior first diverge. Use the reusable [full-stack debugging worksheet](docs/debugging-workflow.md).
+
+```bash
+./bin/digital-banking-lab debug-scenarios
+./bin/digital-banking-lab debug-run northstar-new-product-class
+./bin/digital-banking-lab debug-trace northstar-new-product-class
+./bin/digital-banking-lab debug-detail northstar-new-product-class
+```
+
+The catalog and run views withhold the root cause; trace narrows the boundary, while detail reveals only controlled, data-minimized engineering evidence. The next chapter focuses on **Git, code review, and deployment-readiness workflows**.
+
 ## Roadmap
 
-Chapters 0 through 18 are implemented. Later entries describe direction, not existing chapters.
+Chapters 0 through 20 are implemented. Later entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -298,9 +313,9 @@ Chapters 0 through 18 are implemented. Later entries describe direction, not exi
 17. **Secure input validation** — trust boundaries and defensive handling (Chapter 16 — implemented)
 18. **Protecting financial data** — minimization, masking, and safe logging (Chapter 17 — implemented)
 19. **Unit testing** — meaningful deterministic boundaries (Chapter 18 — implemented)
-20. **Integration testing** — deterministic tests at system boundaries (Chapter 19 — next)
-21. **Full-stack debugging** — trace failures across browser, services, and adapters
-22. **Git and code-review workflows** — reviewable changes and delivery discipline
+20. **Integration testing** — deterministic tests at system boundaries (Chapter 19 — implemented)
+21. **Full-stack debugging** — trace failures across browser, services, and adapters (Chapter 20 — implemented)
+22. **Git, code review, and deployment readiness** — reviewable changes and delivery discipline (Chapter 21 — next)
 23. **Digital experience optimization** — analytics, usability, conversion, navigation, and SEO
 24. **End-to-end digital banking integration laboratory** — assemble and assess the complete flow
 
