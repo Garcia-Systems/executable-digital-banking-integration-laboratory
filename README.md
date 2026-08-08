@@ -16,18 +16,20 @@ Each important concept should have a domain model, deterministic behavior, tests
 
 Core exercises require no credentials, internet connection, live banking platform, or real member data. Fixed fictional fixtures and simulated services make runs repeatable, tests trustworthy, failures reproducible, and sensitive-data mistakes avoidable. The same input should yield byte-for-byte identical output.
 
-## Current chapter
+## Current chapters
 
 [Chapter 0: The Digital Banking Integration Ecosystem](chapters/00-digital-banking-integration-ecosystem.md) introduces the Member actor, Harbor's web, mobile, operations, application, and database systems, plus vendor digital banking, legacy core, and fintech systems. Explicit ownership and category enums make boundaries visible. A validated directed graph and CLI turn the architecture into executable behavior.
 
 See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integration-ecosystem.md).
 
+[Chapter 1: Building a Deterministic Integration Laboratory](chapters/01-deterministic-integration-laboratory.md) adds controlled clocks, identifiers, scenario fixtures, and simulated vendor states. This foundation comes before REST, SOAP, databases, and frontend behavior so later integration lessons remain repeatable without live infrastructure. See its [Mermaid architecture diagram](diagrams/deterministic-laboratory.md).
+
 ## Requirements and installation
 
 - PHP 8.2 or newer
-- Composer is optional for Chapter 0
+- Composer is optional for Chapters 0 and 1
 
-Clone the repository and enter it. Chapter 0 has no third-party packages, so it runs immediately:
+Clone the repository and enter it. The implemented chapters have no third-party packages, so they run immediately:
 
 ```bash
 git clone <repository-url> executable-digital-banking-integration-laboratory
@@ -42,7 +44,9 @@ composer install
 
 The checked-in `bootstrap.php` means core commands remain offline and dependency-free.
 
-## Run Chapter 0
+## Run the laboratory
+
+Inspect the Chapter 0 ecosystem:
 
 Print the complete ecosystem in stable ownership groups:
 
@@ -54,6 +58,20 @@ Trace the Member Web feature path across Harbor and vendor boundaries:
 
 ```bash
 ./bin/digital-banking-lab path
+```
+
+Execute each Chapter 1 scenario:
+
+```bash
+./bin/digital-banking-lab laboratory normal-operation
+./bin/digital-banking-lab laboratory vendor-timeout
+./bin/digital-banking-lab laboratory vendor-unavailable
+```
+
+Verify that two independently constructed runs have the same observable result:
+
+```bash
+./bin/digital-banking-lab determinism normal-operation
 ```
 
 Run all tests:
@@ -80,10 +98,10 @@ Future chapters will extend these same boundaries rather than replacing them: pr
 
 ## Roadmap
 
-Only Chapter 0 is implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0 and 1 are implemented. The remaining entries describe direction, not existing chapters.
 
-1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0)
-2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions
+1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
+2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
 3. **Member domain modeling** — safe fictional member and account value objects
 4. **Vendor platform boundaries** — contracts and division of responsibility
 5. **REST API fundamentals** — resources, methods, status codes, and schemas
