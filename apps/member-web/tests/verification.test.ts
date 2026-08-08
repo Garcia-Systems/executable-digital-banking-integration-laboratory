@@ -14,7 +14,7 @@ describe('Harbor verification experience',()=>{
   expect(result.status).toBe('review_required');expect(request.mock.calls[0][0]).toContain('/api/members/member-0001/verification');expect(request.mock.calls[0][1].signal).toBe(controller.signal);
  });
  it.each([
-  ['verification_review_required','Your verification requires review before this request can continue.'],
+  ['verification_review_required','Your verification needs review before you can continue. No funds have been moved.'],
   ['member_verification_required','Verification is required before this request can continue.'],
  ])('renders workflow eligibility outside field errors',async(code,message)=>{
   const form=new TransferForm({previewTransfer:vi.fn().mockRejectedValue(new HarborApiError(409,code))},()=> 'member-0001',()=>undefined);
