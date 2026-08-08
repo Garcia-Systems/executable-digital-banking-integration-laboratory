@@ -15,6 +15,10 @@ use Harbor\DigitalBankingLab\Domain\VendorStatus;
 use Harbor\DigitalBankingLab\Fixtures\HarborEcosystemFixture;
 use Harbor\DigitalBankingLab\Fixtures\LaboratoryFixtureFactory;
 use Harbor\DigitalBankingLab\Fixtures\MemberFixtureFactory;
+use Harbor\DigitalBankingLab\Application\{DigitalBankingGateway, MemberDomainComparator, VendorMemberRenderer};
+use Harbor\DigitalBankingLab\Integration\{UnknownVendorIdentity, VendorIdentityMap, VendorTranslationException};
+use Harbor\DigitalBankingLab\Integration\Northstar\{DeterministicNorthstarClient, NorthstarDigitalBankingAdapter, NorthstarTranslator};
+use Harbor\DigitalBankingLab\Integration\Northstar\Model\{NorthstarCustomer, NorthstarCustomerKey, NorthstarCustomerStatus, NorthstarProductClass};
 
 $tests = [];
 $test = static function (string $name, callable $body) use (&$tests): void { $tests[$name] = $body; };
@@ -179,6 +183,68 @@ $test('unknown member lookup fails explicitly', function () use ($assert): void 
 $test('independent member fixtures render byte-for-byte identically', function () use ($assert): void {
     $renderer = new MemberSummaryRenderer();
     $assert($renderer->render(MemberFixtureFactory::create()) === $renderer->render(MemberFixtureFactory::create()));
+});
+
+$northstarGateway = static function (string $scenario = 'normal'): DigitalBankingGateway {
+    return new NorthstarDigitalBankingAdapter(new DeterministicNorthstarClient($scenario), VendorIdentityMap::laboratory(), new NorthstarTranslator());
+};
+
+$test('Northstar models preserve vendor terminology', function () use ($assert): void {
+    $customer = (new DeterministicNorthstarClient())->findCustomer(new NorthstarCustomerKey('NS-CUST-4417'));
+    $assert($customer instanceof NorthstarCustomer && $customer->customerStatus === NorthstarCustomerStatus::ENABLED);
+    $assert($customer->products[0]->productClass->value === 'DDA');
+    $assert($customer->products[1]->productClass->value === 'SAV');
+});
+
+$test('vendor identity map keeps typed namespaces distinct', function () use ($assert): void {
+    $map = VendorIdentityMap::laboratory();
+    $assert($map->northstarCustomerFor(new MemberId('member-0001'))->value === 'NS-CUST-4417');
+    $assert($map->northstarProductFor(new AccountId('account-0001'))->value === 'NS-PROD-9001');
+    $assert($map->northstarProductFor(new AccountId('account-0002'))->value === 'NS-PROD-9002');
+    $assert($map->harborAccountFor($map->northstarProductFor(new AccountId('account-0001')))->value === 'account-0001');
+});
+
+$test('Northstar terminology translates explicitly to Harbor values', function () use ($assert): void {
+    $translator = new NorthstarTranslator();
+    $assert($translator->membershipStatus(NorthstarCustomerStatus::ENABLED) === MembershipStatus::ACTIVE);
+    $assert($translator->accountType(new NorthstarProductClass('DDA')) === AccountType::CHECKING);
+    $assert($translator->accountType(new NorthstarProductClass('SAV')) === AccountType::SAVINGS);
+});
+
+$test('Northstar adapter returns complete Harbor domain state', function () use ($assert, $northstarGateway): void {
+    $member = $northstarGateway()->findMember(new MemberId('member-0001'));
+    $assert($member instanceof Member && !$member instanceof NorthstarCustomer);
+    $assert($member->id->value === 'member-0001' && $member->id->value !== 'NS-CUST-4417');
+    $assert(count($member->accounts) === 2 && $member->accounts[0]->id->value === 'account-0001');
+    $assert($member->accounts[0]->type === AccountType::CHECKING && $member->accounts[1]->type === AccountType::SAVINGS);
+    $assert($member->accounts[0]->status === AccountStatus::OPEN && $member->accounts[1]->status === AccountStatus::OPEN);
+    $assert($member->accounts[0]->balance->minorUnits === 245075 && is_int($member->accounts[0]->balance->minorUnits));
+    $assert($member->accounts[0]->balance->add($member->accounts[1]->balance)->format() === '$10,570.75');
+});
+
+$test('unsupported Northstar values fail at translation boundary', function () use ($assert, $northstarGateway): void {
+    try { $northstarGateway('northstar-unsupported-product')->findMember(new MemberId('member-0001')); $assert(false); }
+    catch (VendorTranslationException $error) { $assert($error->getMessage() === 'Unsupported Northstar productClass: MMA'); }
+    $assert(array_column(AccountType::cases(), 'value') === ['CHECKING', 'SAVINGS']);
+});
+
+$test('unknown identity mappings fail explicitly', function () use ($assert, $northstarGateway): void {
+    try { $northstarGateway()->findMember(new MemberId('member-9999')); $assert(false); }
+    catch (UnknownVendorIdentity $error) { $assert($error->getMessage() === 'No Northstar customer mapping for Harbor member: member-9999'); }
+});
+
+$test('repeated vendor translation is meaningfully equivalent and renders identically', function () use ($assert, $northstarGateway): void {
+    $first = $northstarGateway()->findMember(new MemberId('member-0001'));
+    $second = $northstarGateway()->findMember(new MemberId('member-0001'));
+    $assert((new MemberDomainComparator())->equivalent($first, $second));
+    $renderer = new VendorMemberRenderer();
+    $assert($renderer->render($first) === $renderer->render($second));
+});
+
+$test('Harbor member domain does not depend on Northstar namespace', function () use ($assert): void {
+    foreach (glob(dirname(__DIR__) . '/src/Domain/Member/*.php') as $file) {
+        $assert(!str_contains((string) file_get_contents($file), 'Northstar'), "Northstar dependency leaked into {$file}");
+    }
 });
 
 $failures = 0;
