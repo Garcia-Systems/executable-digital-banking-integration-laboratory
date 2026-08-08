@@ -19,6 +19,9 @@ use Harbor\DigitalBankingLab\Application\{DigitalBankingGateway, MemberDomainCom
 use Harbor\DigitalBankingLab\Integration\{UnknownVendorIdentity, VendorIdentityMap, VendorTranslationException};
 use Harbor\DigitalBankingLab\Integration\Northstar\{DeterministicNorthstarClient, NorthstarDigitalBankingAdapter, NorthstarTranslator};
 use Harbor\DigitalBankingLab\Integration\Northstar\Model\{NorthstarCustomer, NorthstarCustomerKey, NorthstarCustomerStatus, NorthstarProductClass};
+use Harbor\DigitalBankingLab\Api\MemberSummaryPresenter;
+use Harbor\DigitalBankingLab\Application\{GetMemberSummary, MemberNotFound};
+use Harbor\DigitalBankingLab\Http\HttpKernelFactory;
 
 $tests = [];
 $test = static function (string $name, callable $body) use (&$tests): void { $tests[$name] = $body; };
@@ -244,6 +247,58 @@ $test('repeated vendor translation is meaningfully equivalent and renders identi
 $test('Harbor member domain does not depend on Northstar namespace', function () use ($assert): void {
     foreach (glob(dirname(__DIR__) . '/src/Domain/Member/*.php') as $file) {
         $assert(!str_contains((string) file_get_contents($file), 'Northstar'), "Northstar dependency leaked into {$file}");
+    }
+});
+
+$test('GetMemberSummary uses its Harbor gateway without HTTP', function () use ($assert): void {
+    $calledWith = null;
+    $gateway = new class($calledWith) implements DigitalBankingGateway {
+        public function __construct(private mixed &$calledWith) {}
+        public function findMember(MemberId $memberId): Member { $this->calledWith = $memberId; return MemberFixtureFactory::create(); }
+    };
+    $member = (new GetMemberSummary($gateway))->execute(new MemberId('member-0001'));
+    $assert($member instanceof Member && $calledWith instanceof MemberId && $calledWith->value === 'member-0001');
+});
+
+$test('GetMemberSummary exposes unknown members as an application outcome', function () use ($assert, $northstarGateway): void {
+    try { (new GetMemberSummary($northstarGateway()))->execute(new MemberId('member-9999')); $assert(false); }
+    catch (MemberNotFound $error) { $assert($error->getMessage() === 'Member was not found.'); }
+});
+
+$test('member API presenter matches the intentional contract fixture', function () use ($assert): void {
+    $actual = (new MemberSummaryPresenter())->present(MemberFixtureFactory::create());
+    $expected = json_decode((string) file_get_contents(__DIR__ . '/Fixtures/api/member-0001.json'), true, 512, JSON_THROW_ON_ERROR);
+    $assert($actual === $expected);
+    $json = json_encode($actual, JSON_THROW_ON_ERROR);
+    $assert(!str_contains($json, 'Northstar') && !str_contains($json, 'customerKey') && !str_contains($json, 'productKey'));
+    $assert(!str_contains($json, 'DDA') && !str_contains($json, 'SAV'));
+    $assert(is_int($actual['accounts'][0]['balance']['minorUnits']));
+});
+
+$test('HTTP member route returns deterministic JSON', function () use ($assert): void {
+    $router = HttpKernelFactory::create();
+    $first = $router->dispatch('GET', '/api/members/member-0001');
+    $second = $router->dispatch('GET', '/api/members/member-0001');
+    $body = json_decode($first->body, true, 512, JSON_THROW_ON_ERROR);
+    $assert($first->status === 200 && $first->headers['Content-Type'] === 'application/json; charset=utf-8');
+    $assert($body['memberId'] === 'member-0001' && array_column($body['accounts'], 'accountId') === ['account-0001', 'account-0002']);
+    $assert($first->body === $second->body);
+    $assert(!str_contains($first->body, 'Northstar') && !str_contains($first->body, 'Trace'));
+});
+
+$test('HTTP errors use the stable safe error contract', function () use ($assert): void {
+    $router = HttpKernelFactory::create();
+    foreach ([
+        ['GET', '/api/members/member-9999', 404, 'member_not_found'],
+        ['GET', '/api/members/', 400, 'invalid_member_id'],
+        ['POST', '/api/members/member-0001', 405, 'method_not_allowed'],
+        ['GET', '/api/unknown', 404, 'route_not_found'],
+    ] as [$method, $path, $status, $code]) {
+        $response = $router->dispatch($method, $path);
+        $body = json_decode($response->body, true, 512, JSON_THROW_ON_ERROR);
+        $assert($response->status === $status && array_keys($body) === ['error']);
+        $assert(array_keys($body['error']) === ['code', 'message'] && $body['error']['code'] === $code);
+        $assert(!str_contains($response->body, 'Northstar') && !str_contains($response->body, 'Exception') && !str_contains($response->body, '/workspace/'));
     }
 });
 
