@@ -4,7 +4,7 @@ import type { TransferPreviewDto } from '../src/contracts';
 
 const preview:TransferPreviewDto={previewId:'preview-0001',memberId:'member-0001',sourceAccount:{accountId:'account-0001',displayName:'Everyday Checking'},destinationAccount:{accountId:'account-0002',displayName:'Primary Savings'},amount:{currency:'USD',minorUnits:50000,formatted:'$500.00'},sourceAvailableBalance:{currency:'USD',minorUnits:238575,formatted:'$2,385.75'},projectedAvailableBalance:{currency:'USD',minorUnits:188575,formatted:'$1,885.75'},memo:'Move to savings'};
 describe('USD decimal parser',()=>{
- it.each([['500',50000],['500.00',50000],['0.01',1],['12.3',1230]])('%s', (value,expected)=>expect(parseUsdAmountToMinorUnits(value)).toBe(expected));
+ it.each([['500',50000],['500.00',50000],['0.01',1],['12.3',1230],['12.34',1234]])('parses %s into %i integer minor units', (value,expected)=>expect(parseUsdAmountToMinorUnits(value)).toBe(expected));
  it.each(['12.345','abc','-1.00','','$1.00','1,000'])('rejects %s',value=>expect(parseUsdAmountToMinorUnits(value)).toBeNull());
 });
 describe('transfer form',()=>{
