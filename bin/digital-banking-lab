@@ -25,10 +25,22 @@ use Harbor\DigitalBankingLab\Infrastructure\Soap\DeterministicHeritageSoapTransp
 use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, HeritageIdentityMap, HeritageSoapClient, HeritageSoapEnvelopeBuilder};
 use Harbor\DigitalBankingLab\Application\{FailureMatrixRenderer, FailureScenarioLaboratory, IntegrationFailureReport};
 use Harbor\DigitalBankingLab\Composition\LaboratoryApplicationFactory;
+use Harbor\DigitalBankingLab\Application\{ApplicationTrace, ApplicationTraceRenderer, MemberFinancialOverviewRenderer};
 
 $command = $argv[1] ?? null;
 $renderer = new EcosystemRenderer();
 $ecosystem = HarborEcosystemFixture::create();
+
+if (in_array($command, ['member-overview', 'member-overview-trace'], true)) {
+    $identifier = $argv[2] ?? null;
+    if ($identifier === null) { fwrite(STDERR, "A member identifier is required.\n"); exit(1); }
+    try {
+        $trace = $command === 'member-overview-trace' ? new ApplicationTrace() : null;
+        $overview = (new LaboratoryApplicationFactory(dirname(__DIR__)))->getMemberFinancialOverview(trace: $trace)->execute(new MemberId($identifier));
+        echo $trace === null ? (new MemberFinancialOverviewRenderer())->render($overview) : (new ApplicationTraceRenderer())->render($trace);
+        exit(0);
+    } catch (Throwable $error) { fwrite(STDERR, get_class($error) . ': ' . $error->getMessage() . "\n"); exit(1); }
+}
 
 if (in_array($command, ['failure', 'failure-matrix'], true)) {
     $failures = new FailureScenarioLaboratory(new LaboratoryApplicationFactory(dirname(__DIR__)));
@@ -193,5 +205,5 @@ if ($command === 'laboratory' || $command === 'determinism') {
     }
 }
 
-fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID|core-account ACCOUNT_ID [--scenario=SCENARIO]|soap-request ACCOUNT_ID|integration-styles|integrations|integration ID|architecture-check|failure SCENARIO|failure-matrix>\n");
+fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|member-overview MEMBER_ID|member-overview-trace MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID|core-account ACCOUNT_ID [--scenario=SCENARIO]|soap-request ACCOUNT_ID|integration-styles|integrations|integration ID|architecture-check|failure SCENARIO|failure-matrix>\n");
 exit(1);

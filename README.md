@@ -38,7 +38,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 8: Handling Vendor Failures Safely](chapters/08-vendor-failure-handling.md) unifies REST and SOAP failures behind Harbor-owned categories, explicit retry dispositions, safe public mappings, and deterministic operator diagnostics—without implementing retries. See the [vendor failure handling diagram](diagrams/vendor-failure-handling.md).
 
-The progression is deliberate: Chapter 0 maps the **system landscape**; Chapter 1 supplies a **deterministic laboratory**; Chapter 2 defines the **Harbor domain**; Chapter 3 establishes the **vendor boundary**; Chapter 4 defines the **Harbor REST API**; Chapter 5 adds **vendor REST transport**; Chapter 6 adds **legacy SOAP integration**; Chapter 7 extracts **reusable adapters**; and Chapter 8 adds **unified failure handling**.
+[Chapter 9: PHP Application Services and Orchestration](chapters/09-php-application-services.md) composes member lookup and core balance capabilities through an explicit, reusable application service, immutable result, thin HTTP controller, presenter, and deterministic teaching trace. See the [PHP application orchestration diagram](diagrams/php-application-orchestration.md).
+
+The progression is deliberate: Chapter 0 maps the **system landscape**; Chapter 1 supplies a **deterministic laboratory**; Chapter 2 defines the **Harbor domain**; Chapter 3 establishes the **vendor boundary**; Chapter 4 defines the **Harbor REST API**; Chapter 5 adds **vendor REST integration**; Chapter 6 adds **legacy SOAP integration**; Chapter 7 extracts **ports and adapters**; Chapter 8 adds **unified failure handling**; and Chapter 9 adds **PHP application orchestration**.
 
 ## Requirements and installation
 
@@ -142,11 +144,19 @@ Inspect one Chapter 8 operator diagnostic or the complete deterministic failure 
 ./bin/digital-banking-lab failure-matrix
 ```
 
+Compose both integration capabilities through Chapter 9's application service and inspect its Harbor-only trace:
+
+```bash
+./bin/digital-banking-lab member-overview member-0001
+./bin/digital-banking-lab member-overview-trace member-0001
+```
+
 Start the Chapter 4 local API, then request success and representative errors from another terminal:
 
 ```bash
 php -S 127.0.0.1:8080 -t public
 curl -i http://127.0.0.1:8080/api/members/member-0001
+curl -i http://127.0.0.1:8080/api/members/member-0001/financial-overview
 curl -i http://127.0.0.1:8080/api/members/member-9999
 curl -i http://127.0.0.1:8080/api/members/
 curl -i -X POST http://127.0.0.1:8080/api/members/member-0001
@@ -173,11 +183,11 @@ src/Application/ Use cases and output rendering
 tests/        Dependency-free executable architecture tests
 ```
 
-Future chapters will extend these same boundaries rather than replacing them. Chapter 9 focuses on **PHP application services and orchestration across multiple integration capabilities**.
+Future chapters will extend these same boundaries rather than replacing them. Chapter 10 will introduce **SQL and MySQL concepts for digital banking data access**; no database is introduced in Chapter 9.
 
 ## Roadmap
 
-Chapters 0 through 8 are implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0 through 9 are implemented. The remaining entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -188,7 +198,7 @@ Chapters 0 through 8 are implemented. The remaining entries describe direction, 
 7. **SOAP and legacy banking integrations** — envelopes, contracts, and translation (Chapter 6 — implemented)
 8. **Integration adapters** — reusable Harbor ports, vendor adapters, clients, and composition (Chapter 7 — implemented)
 9. **Vendor failure handling** — classification, containment, retry disposition, and safe translation (Chapter 8 — implemented)
-10. **PHP application services** — orchestrate domain work and integrations
+10. **PHP application services** — orchestrate domain work and integrations (Chapter 9 — implemented)
 11. **SQL for digital banking** — MySQL-oriented schemas and queries
 12. **Data-driven development** — measurements, hypotheses, and responsible analytics
 13. **Member web experience** — semantic HTML, CSS, accessibility, and mobile-first design

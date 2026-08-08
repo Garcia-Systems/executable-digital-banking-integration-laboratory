@@ -34,6 +34,9 @@ use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, H
 use Harbor\DigitalBankingLab\Integration\Heritage\Exception\{HeritageAccountNotFound, HeritageCoreError, HeritageResponseDecodingFailure};
 use Harbor\DigitalBankingLab\Integration\Heritage\Model\{HeritageAccountDetails, HeritageAccountNumber};
 use Harbor\DigitalBankingLab\Api\IntegrationFailureApiMapper;
+use Harbor\DigitalBankingLab\Api\MemberFinancialOverviewPresenter;
+use Harbor\DigitalBankingLab\Application\{ApplicationTrace, GetMemberFinancialOverview};
+use Harbor\DigitalBankingLab\Application\IntegrationOperation;
 
 $tests = [];
 $test = static function (string $name, callable $body) use (&$tests): void { $tests[$name] = $body; };
@@ -559,6 +562,74 @@ $test('operator diagnostics and failure matrix are complete and deterministic', 
     foreach (['External system: Northstar Digital Banking', 'Harbor failure category: TIMEOUT', 'Retry disposition: RETRYABLE', 'Diagnostic code: NORTHSTAR_TIMEOUT', 'Public API mapping: 504 upstream_timeout'] as $line) $assert(str_contains($first, $line));
     $matrix = (new FailureMatrixRenderer())->render($laboratory);
     $assert(substr_count($matrix, "\n") === count(FailureScenarioLaboratory::SCENARIOS) + 2 && str_contains($matrix, 'heritage-unsupported-currency | UNSUPPORTED_EXTERNAL_VALUE | NOT_RETRYABLE | 502 | upstream_invalid_response'));
+});
+
+$test('member financial overview orchestrates Harbor ports sequentially and returns typed results', function () use ($assert): void {
+    $events = [];
+    $member = MemberFixtureFactory::find(new MemberId('member-0001'));
+    $digital = new class($member, $events) implements DigitalBankingGateway {
+        public function __construct(private Member $member, private array &$events) {}
+        public function findMember(MemberId $id): Member { $this->events[] = "member:{$id->value}"; return $this->member; }
+    };
+    $balances = new class($events) implements AccountBalanceGateway {
+        public function __construct(private array &$events) {}
+        public function accountBalanceDetails(AccountId $id): AccountBalanceDetails {
+            $this->events[] = "balance:{$id->value}";
+            return new AccountBalanceDetails($id, Money::usd($id->value === 'account-0001' ? 245075 : 812000), Money::usd($id->value === 'account-0001' ? 238575 : 812000), AccountStatus::OPEN);
+        }
+    };
+    $trace = new ApplicationTrace();
+    $first = (new GetMemberFinancialOverview($digital, $balances, $trace))->execute($member->id);
+    $assert($events === ['member:member-0001', 'balance:account-0001', 'balance:account-0002']);
+    $assert($first->member === $member && count($first->accounts) === 2);
+    $assert($first->accounts[0]->account->balance->minorUnits === 245075 && $first->accounts[0]->ledgerBalance->minorUnits === 245075 && $first->accounts[0]->availableBalance->minorUnits === 238575);
+    $assert($first->accounts[1]->ledgerBalance->minorUnits === 812000 && $first->accounts[1]->availableBalance->minorUnits === 812000);
+    $assert($trace->steps() === ['DigitalBankingGateway.getMember(member-0001)', 'Returned Member with 2 accounts', 'AccountBalanceGateway.getDetails(account-0001)', 'AccountBalanceGateway.getDetails(account-0002)', 'Construct MemberFinancialOverview', 'Return application result']);
+});
+
+$test('overview rejects mismatched account identity', function () use ($assert): void {
+    $member = MemberFixtureFactory::find(new MemberId('member-0001'));
+    $digital = new class($member) implements DigitalBankingGateway { public function __construct(private Member $member) {} public function findMember(MemberId $id): Member { return $this->member; } };
+    $balances = new class implements AccountBalanceGateway { public function accountBalanceDetails(AccountId $id): AccountBalanceDetails { return new AccountBalanceDetails(new AccountId('account-9999'), Money::usd(1), Money::usd(1), AccountStatus::OPEN); } };
+    try { (new GetMemberFinancialOverview($digital, $balances))->execute($member->id); $assert(false); } catch (UnexpectedValueException $error) { $assert(str_contains($error->getMessage(), 'identity')); }
+});
+
+$test('overview fails whole result and stops sequential work on Harbor integration failure', function () use ($assert): void {
+    $events = []; $member = MemberFixtureFactory::find(new MemberId('member-0001'));
+    $digital = new class($member) implements DigitalBankingGateway { public function __construct(private Member $member) {} public function findMember(MemberId $id): Member { return $this->member; } };
+    $balances = new class($events) implements AccountBalanceGateway {
+        public function __construct(private array &$events) {}
+        public function accountBalanceDetails(AccountId $id): AccountBalanceDetails {
+            $this->events[] = $id->value;
+            if ($id->value === 'account-0002') throw new IntegrationFailure(IntegrationFailureCategory::NOT_FOUND, RetryDisposition::NOT_RETRYABLE, 'A required external service failed.', 'hidden', IntegrationOperation::ACCOUNT_BALANCE_LOOKUP, 'HIDDEN');
+            return new AccountBalanceDetails($id, Money::usd(245075), Money::usd(238575), AccountStatus::OPEN);
+        }
+    };
+    try { (new GetMemberFinancialOverview($digital, $balances))->execute($member->id); $assert(false); }
+    catch (IntegrationFailure $failure) { $assert($failure->category === IntegrationFailureCategory::NOT_FOUND && $events === ['account-0001', 'account-0002']); }
+});
+
+$test('financial overview presenter is explicit and contains no vendor language', function () use ($assert): void {
+    $overview = (new LaboratoryApplicationFactory(dirname(__DIR__)))->getMemberFinancialOverview()->execute(new MemberId('member-0001'));
+    $data = (new MemberFinancialOverviewPresenter())->present($overview); $json = json_encode($data, JSON_THROW_ON_ERROR);
+    $assert($data['memberId'] === 'member-0001' && count($data['accounts']) === 2);
+    $assert($data['accounts'][0]['digitalBankingBalance']['minorUnits'] === 245075 && $data['accounts'][0]['availableBalance']['minorUnits'] === 238575);
+    $assert($data['accounts'][1]['ledgerBalance']['minorUnits'] === 812000);
+    foreach (['Northstar', 'Heritage', 'SOAP', 'REST', 'customerKey', 'productKey', 'HC-'] as $term) $assert(!str_contains($json, $term));
+});
+
+$test('financial overview HTTP resource succeeds and reuses safe failure mapping', function () use ($assert): void {
+    $response = HttpKernelFactory::create()->dispatch('GET', '/api/members/member-0001/financial-overview');
+    $data = json_decode($response->body, true, flags: JSON_THROW_ON_ERROR);
+    $assert($response->status === 200 && $response->headers['Content-Type'] === 'application/json; charset=utf-8');
+    $assert(count($data['accounts']) === 2 && $data['accounts'][0]['availableBalance']['formatted'] === '$2,385.75' && $data['accounts'][1]['ledgerBalance']['minorUnits'] === 812000);
+    $assert(HttpKernelFactory::create('customer-not-found')->dispatch('GET', '/api/members/member-0001/financial-overview')->status === 404);
+    $assert(HttpKernelFactory::create()->dispatch('GET', '/api/members/member-9999/financial-overview')->status === 404);
+    $assert(HttpKernelFactory::create('vendor-timeout')->dispatch('GET', '/api/members/member-0001/financial-overview')->status === 504);
+    $temporary = HttpKernelFactory::create('normal', 'temporary-unavailable')->dispatch('GET', '/api/members/member-0001/financial-overview');
+    $malformed = HttpKernelFactory::create('normal', 'malformed-xml')->dispatch('GET', '/api/members/member-0001/financial-overview');
+    $assert($temporary->status === 503 && $malformed->status === 502);
+    foreach (['Northstar', 'Heritage', 'SOAP', 'HC-'] as $term) $assert(!str_contains($temporary->body . $malformed->body, $term));
 });
 
 $failures = 0;
