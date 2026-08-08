@@ -683,6 +683,47 @@ $test('inactive member service exposes a Harbor port and Harbor results', functi
     $reflection=new ReflectionClass($service); $assert(!$reflection->hasProperty('pdo'));
 });
 
+$test('chapter 11 factual projection preserves totals recent facts and never-active members', function () use ($assert): void {
+    $repo=new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository(\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__)));
+    $facts=$repo->activityFacts(new DateTimeImmutable('2025-07-19T14:30:00Z'));
+    $assert(array_map(fn($f)=>$f->memberId->value,$facts)===['member-0001','member-0002','member-0003']);
+    $assert([$facts[0]->accountCount,$facts[0]->totalActivityCount,$facts[0]->recentActivityCount,$facts[0]->mostRecentActivityAt->format('c')] === [2,3,2,'2026-01-05T15:30:00+00:00']);
+    $assert([$facts[2]->accountCount,$facts[2]->totalActivityCount,$facts[2]->recentActivityCount,$facts[2]->mostRecentActivityAt] === [1,0,0,null]);
+});
+
+$test('activity policy cutoff and inclusive SQL boundary are deterministic', function () use ($assert): void {
+    $policy=\Harbor\DigitalBankingLab\Application\ActivityPolicy::inactiveAfterDays(180); $asOf=new DateTimeImmutable('2026-01-15T14:30:00Z');
+    $assert($policy->inactiveAfterDays===180 && $policy->cutoff($asOf)->format('c')==='2025-07-19T14:30:00+00:00');
+    $assert(\Harbor\DigitalBankingLab\Application\ActivityPolicy::inactiveAfterDays(90)->cutoff($asOf)->format('c')==='2025-10-17T14:30:00+00:00');
+    $pdo=\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__)); $pdo->exec("INSERT INTO account_activity VALUES ('boundary','account-0003','DEPOSIT','2025-07-19T14:30:00Z',1)");
+    $facts=(new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository($pdo))->activityFactsFor(new MemberId('member-0002'),$policy->cutoff($asOf));
+    $assert($facts->recentActivityCount===1,'occurred_at >= cutoff must be inclusive');
+});
+
+$test('classification and derived elapsed days are explicit application decisions', function () use ($assert): void {
+    $repo=new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository(\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__))); $policy=\Harbor\DigitalBankingLab\Application\ActivityPolicy::laboratoryDefault(); $asOf=new DateTimeImmutable('2026-01-15T14:30:00Z');
+    $service=new \Harbor\DigitalBankingLab\Application\GetMemberActivityProfile($repo,$policy);
+    $one=$service->execute(new MemberId('member-0001'),$asOf); $two=$service->execute(new MemberId('member-0002'),$asOf); $three=$service->execute(new MemberId('member-0003'),$asOf);
+    $assert([$one->classification->value,$two->classification->value,$three->classification->value]===['RECENTLY_ACTIVE','INACTIVE','NEVER_ACTIVE']);
+    $assert($one->daysSinceLastActivity===9 && $two->daysSinceLastActivity===228 && $three->daysSinceLastActivity===null);
+    $reflection=new ReflectionClass($service); $assert(!$reflection->hasProperty('pdo'));
+});
+
+$test('activity review is explainable excludes recent and has deterministic order', function () use ($assert): void {
+    $repo=new \Harbor\DigitalBankingLab\Infrastructure\Database\SqlMemberActivityRepository(\Harbor\DigitalBankingLab\Infrastructure\Database\LaboratoryDatabase::create(dirname(__DIR__)));
+    $result=(new \Harbor\DigitalBankingLab\Application\FindMembersForActivityReview($repo,\Harbor\DigitalBankingLab\Application\ActivityPolicy::laboratoryDefault()))->execute(new DateTimeImmutable('2026-01-15T14:30:00Z'));
+    $assert(array_map(fn($c)=>$c->memberId->value,$result)===['member-0002','member-0003']);
+    $assert($result[0]->reason==='No activity within the 180-day laboratory window' && str_contains($result[1]->reason,'No activity records'));
+});
+
+$test('activity profile API is intentional and preserves existing routes', function () use ($assert): void {
+    $response=HttpKernelFactory::create()->dispatch('GET','/api/members/member-0001/activity-profile'); $data=json_decode($response->body,true,flags:JSON_THROW_ON_ERROR);
+    $assert($response->status===200 && $data['policy']['inactiveAfterDays']===180 && $data['classification']==='recently_active');
+    $assert($data['facts']===['accountCount'=>2,'activityCount'=>3,'recentActivityCount'=>2,'mostRecentActivityAt'=>'2026-01-05T15:30:00Z','daysSinceLastActivity'=>9]);
+    $assert(!str_contains($response->body,'member_id') && HttpKernelFactory::create()->dispatch('GET','/api/members/member-9999/activity-profile')->status===404);
+    $assert(HttpKernelFactory::create()->dispatch('GET','/api/members/member-0001')->status===200);
+});
+
 $failures = 0;
 foreach ($tests as $name => $body) {
     try { $body(); echo "PASS {$name}\n"; }

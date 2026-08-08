@@ -29,8 +29,28 @@ use Harbor\DigitalBankingLab\Application\{ApplicationTrace, ApplicationTraceRend
 use Harbor\DigitalBankingLab\Infrastructure\Database\{LaboratoryDatabase, SqlMemberActivityRepository};
 use Harbor\DigitalBankingLab\Application\FindInactiveMembers;
 use Harbor\DigitalBankingLab\Domain\FixedClock;
+use Harbor\DigitalBankingLab\Application\{ActivityPolicy,FindMembersForActivityReview,GetMemberActivityProfile};
 
 $command = $argv[1] ?? null;
+
+if (in_array($command, ['member-activity','activity-review','explain-activity'], true)) {
+    try {
+        $days=180; foreach(array_slice($argv,2) as $arg) if(str_starts_with($arg,'--days=')) $days=(int)substr($arg,7);
+        $policy=ActivityPolicy::inactiveAfterDays($days); $clock=new FixedClock('2026-01-15T14:30:00Z'); $asOf=$clock->now();
+        $repo=new SqlMemberActivityRepository(LaboratoryDatabase::create(dirname(__DIR__)));
+        if($command==='activity-review'){
+            echo "Activity Review Candidates\n\nAs of: ".$asOf->format('Y-m-d\TH:i:s\Z')."\nPolicy: inactive after {$days} days\n\n";
+            foreach((new FindMembersForActivityReview($repo,$policy))->execute($asOf) as $c) echo "{$c->memberId->value} | {$c->displayName} | {$c->classification->value} | ".($c->mostRecentActivityAt?->format('Y-m-d\TH:i:s\Z')??'no activity')." | {$c->reason}\n";
+        } else {
+            $id=$argv[2]??null; if($id===null||str_starts_with($id,'--')) throw new InvalidArgumentException('A member identifier is required.');
+            $p=(new GetMemberActivityProfile($repo,$policy))->execute(new MemberId($id),$asOf); $latest=$p->mostRecentActivityAt?->format('Y-m-d\TH:i:s\Z')??'none';
+            if($command==='member-activity') echo "Member Activity Profile\n\nMember: {$p->displayName}\nMember ID: {$p->memberId->value}\nAs of: ".$asOf->format('Y-m-d\TH:i:s\Z')."\nPolicy: inactive after {$days} days\n\nAccounts: {$p->accountCount}\nActivities: {$p->totalActivityCount}\nActivities in last {$days} days: {$p->recentActivityCount}\nMost recent activity: {$latest}\nDays since last activity: ".($p->daysSinceLastActivity??'none')."\n\nClassification: {$p->classification->value}\n";
+            else echo "Activity decision for {$id}\n\nFacts:\nTotal activity: {$p->totalActivityCount}\nRecent activity since cutoff: {$p->recentActivityCount}\nMost recent activity: {$latest}\n\nPolicy:\nInactive after: {$days} days\n\nDecision:\n{$p->classification->value}\n\nReason:\n".($p->classification->value==='NEVER_ACTIVE'?'No activity records exist in the Harbor operational dataset.':($p->classification->value==='INACTIVE'?'Activity exists, but none exists inside the current activity window.':'Activity exists inside the current activity window.'))."\n";
+        }
+        exit(0);
+    } catch(Throwable $error){fwrite(STDERR,get_class($error).': '.$error->getMessage()."\n");exit(1);}
+}
+
 $renderer = new EcosystemRenderer();
 $ecosystem = HarborEcosystemFixture::create();
 
