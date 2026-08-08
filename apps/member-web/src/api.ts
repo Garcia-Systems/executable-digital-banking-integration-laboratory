@@ -1,24 +1,55 @@
 import { ContractError, parseMemberSummary, type MemberSummaryDto } from './contracts';
 
 export class HarborApiError extends Error {
+  readonly kind = 'http';
+
   constructor(public readonly status: number, public readonly code?: string, public readonly safeMessage?: string) {
     super(`Harbor API request failed with status ${status}.`);
     this.name = 'HarborApiError';
   }
 }
 
+export class NetworkError extends Error {
+  readonly kind = 'network';
+
+  constructor() {
+    super('The Harbor API could not be reached.');
+    this.name = 'NetworkError';
+  }
+}
+
+export class RequestAbortedError extends Error {
+  readonly kind = 'aborted';
+
+  constructor() {
+    super('The request was aborted.');
+    this.name = 'RequestAbortedError';
+  }
+}
+
 type ErrorBody = { code?: unknown; message?: unknown };
 
 export interface MemberApi {
-  getMember(memberId: string): Promise<MemberSummaryDto>;
+  getMember(memberId: string, signal?: AbortSignal): Promise<MemberSummaryDto>;
 }
+
+const isAbortFailure = (error: unknown, signal?: AbortSignal): boolean =>
+  signal?.aborted === true || (error instanceof DOMException && error.name === 'AbortError') ||
+  (typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError');
 
 export class HarborApiClient implements MemberApi {
   constructor(private readonly baseUrl: string, private readonly request: typeof fetch = fetch) {}
 
-  async getMember(memberId: string): Promise<MemberSummaryDto> {
+  async getMember(memberId: string, signal?: AbortSignal): Promise<MemberSummaryDto> {
     const url = `${this.baseUrl.replace(/\/$/, '')}/api/members/${encodeURIComponent(memberId)}`;
-    const response = await this.request(url, { method: 'GET', headers: { Accept: 'application/json' } });
+    let response: Response;
+    try {
+      response = await this.request(url, { method: 'GET', headers: { Accept: 'application/json' }, signal });
+    } catch (error: unknown) {
+      if (isAbortFailure(error, signal)) throw new RequestAbortedError();
+      throw new NetworkError();
+    }
+
     let body: unknown;
     try {
       body = await response.json();

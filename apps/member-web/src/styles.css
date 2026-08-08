@@ -10,7 +10,13 @@ h1 { margin: var(--space-1) 0; font-size: clamp(1.8rem, 7vw, 2.6rem); }
 h2 { margin-top: var(--space-4); }
 .eyebrow { color: var(--blue); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 .account-grid { display: grid; gap: var(--space-2); }
-.account-card, .state-panel { padding: var(--space-3); border-radius: .75rem; background: var(--white); box-shadow: 0 2px 10px rgb(18 52 77 / 10%); }
+.account-card, .state-panel, .member-controls { padding: var(--space-3); border-radius: .75rem; background: var(--white); box-shadow: 0 2px 10px rgb(18 52 77 / 10%); }
+.member-controls { margin-bottom: var(--space-3); }
+.control-title { margin: var(--space-2) 0 var(--space-1); font-size: 1rem; }
+label { display: block; font-weight: 700; }
+select { width: 100%; min-height: 2.75rem; margin-top: var(--space-1); padding: .55rem; border: 1px solid var(--muted); border-radius: .4rem; color: var(--ink); background: var(--white); font: inherit; }
+select:focus-visible { outline: .2rem solid var(--navy); outline-offset: .15rem; }
+.teaching-note, .request-status { color: var(--muted); }
 .account-card h3 { margin-top: 0; }
 .account-type { color: var(--muted); }
 .balance { margin-block: var(--space-2); font-size: 1.8rem; font-weight: 750; }
