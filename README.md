@@ -42,7 +42,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 10: SQL for Digital Banking](chapters/10-sql-for-digital-banking.md) adds a deterministic Harbor-owned SQLite operational projection, explicit schema and fixtures, parameterized SQL, row mapping, inactivity reasoning, and query-plan inspection. It is not a ledger and does not replace vendor integrations. See the [SQL data-access diagram](diagrams/sql-data-access.md). The SQL remains MySQL-oriented where practical, with differences documented in the chapter.
 
-The progression is deliberate: Chapter 0 maps the **system landscape**; Chapter 1 supplies a **deterministic laboratory**; Chapter 2 defines the **Harbor domain**; Chapter 3 establishes the **vendor boundary**; Chapter 4 defines the **Harbor REST API**; Chapter 5 adds **vendor REST integration**; Chapter 6 adds **legacy SOAP integration**; Chapter 7 extracts **ports and adapters**; Chapter 8 adds **unified failure handling**; Chapter 9 adds **PHP application orchestration**; and Chapter 10 adds **SQL and relational data access**.
+[Chapter 11: Data-Driven Development](chapters/11-data-driven-development.md) turns those relational facts into explicit derived metrics and explainable Harbor decisions through an activity policy, profile, and operational review. See the [data-driven development diagram](diagrams/data-driven-development.md).
+
+The progression is deliberate: Chapter 0 maps the **system landscape**; Chapter 1 supplies a **deterministic laboratory**; Chapter 2 defines the **Harbor domain**; Chapter 3 establishes the **vendor boundary**; Chapter 4 defines the **Harbor REST API**; Chapter 5 adds **vendor REST integration**; Chapter 6 adds **legacy SOAP integration**; Chapter 7 extracts **ports and adapters**; Chapter 8 adds **unified failure handling**; Chapter 9 adds **PHP application orchestration**; Chapter 10 adds **SQL and relational facts**; and Chapter 11 adds **data-driven application decisions**.
 
 ## Requirements and installation
 
@@ -164,6 +166,15 @@ Explore Chapter 10's deterministic operational database and SQL reasoning:
 ./bin/digital-banking-lab explain inactive-members
 ```
 
+Explore Chapter 11's explicit facts, policy, and decisions:
+
+```bash
+./bin/digital-banking-lab member-activity member-0001
+./bin/digital-banking-lab activity-review
+./bin/digital-banking-lab activity-review --days=90
+./bin/digital-banking-lab explain-activity member-0002
+```
+
 Start the Chapter 4 local API, then request success and representative errors from another terminal:
 
 ```bash
@@ -196,11 +207,11 @@ src/Application/ Use cases and output rendering
 tests/        Dependency-free executable architecture tests
 ```
 
-Future chapters will extend these same boundaries rather than replacing them. Chapter 11 will focus on **data-driven development: turning SQL-backed operational data into application behavior and decisions**.
+Future chapters will extend these same boundaries rather than replacing them. Chapter 12 will build the **Member Web experience consuming Harbor APIs with HTML, CSS, JavaScript, and TypeScript**.
 
 ## Roadmap
 
-Chapters 0 through 10 are implemented. The remaining entries describe direction, not existing chapters.
+Chapters 0 through 11 are implemented. The remaining entries describe direction, not existing chapters.
 
 1. **Digital banking ecosystem** — systems, actors, ownership, and integration paths (Chapter 0 — implemented)
 2. **Deterministic laboratory setup** — repeatable fixtures and simulation conventions (Chapter 1 — implemented)
@@ -213,8 +224,8 @@ Chapters 0 through 10 are implemented. The remaining entries describe direction,
 9. **Vendor failure handling** — classification, containment, retry disposition, and safe translation (Chapter 8 — implemented)
 10. **PHP application services** — orchestrate domain work and integrations (Chapter 9 — implemented)
 11. **SQL for digital banking** — MySQL-oriented schemas and queries (Chapter 10 — implemented)
-12. **Data-driven development** — measurements, hypotheses, and responsible analytics
-13. **Member web experience** — semantic HTML, CSS, accessibility, and mobile-first design
+12. **Data-driven development** — relational facts interpreted by explicit application policy (Chapter 11 — implemented)
+13. **Member Web** — Harbor API consumption with HTML, CSS, JavaScript, and TypeScript (Chapter 12 — next)
 14. **Frontend state and API consumption** — JavaScript and TypeScript clients
 15. **Digital self-service workflows** — usable navigation and safe conversions
 16. **Third-party fintech integration** — capability and risk evaluation

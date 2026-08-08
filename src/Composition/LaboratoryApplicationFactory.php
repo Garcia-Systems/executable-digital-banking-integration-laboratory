@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Harbor\DigitalBankingLab\Composition;
 
-use Harbor\DigitalBankingLab\Application\{AccountBalanceGateway, ApplicationTrace, DigitalBankingGateway, GetAccountBalanceDetails, GetMemberFinancialOverview, GetMemberSummary, MemberNotFoundGateway};
+use Harbor\DigitalBankingLab\Application\{AccountBalanceGateway, ActivityPolicy, ApplicationTrace, DigitalBankingGateway, GetAccountBalanceDetails, GetMemberActivityProfile, GetMemberFinancialOverview, GetMemberSummary, MemberNotFoundGateway};
+use Harbor\DigitalBankingLab\Infrastructure\Database\{LaboratoryDatabase,SqlMemberActivityRepository};
 
 use Harbor\DigitalBankingLab\Infrastructure\Http\DeterministicHttpClient;
 use Harbor\DigitalBankingLab\Infrastructure\Soap\DeterministicHeritageSoapTransport;
@@ -44,5 +45,10 @@ final readonly class LaboratoryApplicationFactory
     public function getMemberFinancialOverview(string $northstarScenario = 'normal', string $heritageScenario = 'normal', ?ApplicationTrace $trace = null): GetMemberFinancialOverview
     {
         return new GetMemberFinancialOverview(new MemberNotFoundGateway($this->digitalBankingGateway(true, $northstarScenario)), $this->accountBalanceGateway($heritageScenario), $trace);
+    }
+
+    public function getMemberActivityProfile(?ActivityPolicy $policy=null): GetMemberActivityProfile
+    {
+        return new GetMemberActivityProfile(new SqlMemberActivityRepository(LaboratoryDatabase::create($this->projectRoot)),$policy??ActivityPolicy::laboratoryDefault());
     }
 }
