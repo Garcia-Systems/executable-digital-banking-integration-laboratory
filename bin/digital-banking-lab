@@ -19,12 +19,32 @@ use Harbor\DigitalBankingLab\Integration\{UnknownVendorIdentity, VendorIdentityM
 use Harbor\DigitalBankingLab\Integration\Northstar\{DeterministicNorthstarClient, NorthstarDigitalBankingAdapter, NorthstarRestClient, NorthstarTranslator};
 use Harbor\DigitalBankingLab\Integration\Northstar\Exception\{NorthstarCustomerNotFound, NorthstarHttpFailure, NorthstarResponseDecodingFailure, NorthstarTransportFailure};
 use Harbor\DigitalBankingLab\Application\GetAccountBalanceDetails;
+use Harbor\DigitalBankingLab\Architecture\ArchitectureInspector;
+use Harbor\DigitalBankingLab\Application\{IntegrationCatalog, IntegrationCatalogRenderer};
 use Harbor\DigitalBankingLab\Infrastructure\Soap\DeterministicHeritageSoapTransport;
 use Harbor\DigitalBankingLab\Integration\Heritage\{HeritageCoreBankingAdapter, HeritageIdentityMap, HeritageSoapClient, HeritageSoapEnvelopeBuilder};
 
 $command = $argv[1] ?? null;
 $renderer = new EcosystemRenderer();
 $ecosystem = HarborEcosystemFixture::create();
+
+if ($command === 'integrations') {
+    echo (new IntegrationCatalogRenderer())->catalog(new IntegrationCatalog());
+    exit(0);
+}
+if ($command === 'integration') {
+    $id = $argv[2] ?? null;
+    if ($id === null) { fwrite(STDERR, "An integration identifier is required.\n"); exit(1); }
+    $integration = (new IntegrationCatalog())->find($id);
+    if ($integration === null) { fwrite(STDERR, "Unknown integration: {$id}\n"); exit(1); }
+    echo (new IntegrationCatalogRenderer())->integration($integration);
+    exit(0);
+}
+if ($command === 'architecture-check') {
+    $inspection = new ArchitectureInspector(dirname(__DIR__) . '/src');
+    echo $inspection->render();
+    exit($inspection->passes() ? 0 : 1);
+}
 
 if ($command === 'integration-styles') {
     echo "Northstar Digital Banking\nTransport: REST\nEncoding: JSON\nPrimary success signal: HTTP status + JSON body\n\n";
@@ -162,5 +182,5 @@ if ($command === 'laboratory' || $command === 'determinism') {
     }
 }
 
-fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID|core-account ACCOUNT_ID [--scenario=SCENARIO]|soap-request ACCOUNT_ID|integration-styles>\n");
+fwrite(STDERR, "Usage: ./bin/digital-banking-lab <ecosystem|path|laboratory SCENARIO|determinism SCENARIO|member MEMBER_ID|vendor-member MEMBER_ID [SCENARIO]|vendor-rest MEMBER_ID [--scenario=SCENARIO]|vendor-map MEMBER_ID|compare-member MEMBER_ID|core-account ACCOUNT_ID [--scenario=SCENARIO]|soap-request ACCOUNT_ID|integration-styles|integrations|integration ID|architecture-check>\n");
 exit(1);

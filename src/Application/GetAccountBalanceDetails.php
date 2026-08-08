@@ -6,9 +6,9 @@ use Harbor\DigitalBankingLab\Domain\Member\{AccountBalanceDetails, AccountId};
 
 final readonly class GetAccountBalanceDetails
 {
-    public function __construct(private CoreBankingGateway $coreBanking) {}
+    public function __construct(private AccountBalanceGateway $accountBalances) {}
     public function execute(AccountId $accountId): AccountBalanceDetails
     {
-        return $this->coreBanking->accountBalanceDetails($accountId);
+        return $this->accountBalances->accountBalanceDetails($accountId);
     }
 }
