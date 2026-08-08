@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+echo '== PHP legacy/full suite =='; php tests/run.php
+echo '== PHP focused unit suite =='; php tests/Unit/run.php
+echo '== PHP integration suite =='; php tests/Integration/run.php
+echo '== Member Web typecheck =='; (cd apps/member-web && npm run typecheck)
+echo '== Member Web tests =='; (cd apps/member-web && npm test)

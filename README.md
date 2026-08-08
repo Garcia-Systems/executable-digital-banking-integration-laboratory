@@ -58,7 +58,9 @@ See the chapter's [Mermaid architecture diagram](diagrams/digital-banking-integr
 
 [Chapter 18: Automated Unit Testing as an Engineering Discipline](chapters/18-automated-unit-testing.md) makes useful test boundaries, handwritten Harbor fakes, deterministic fixtures, and behavior-focused assertions explicit and executable. See the [unit-testing boundaries diagram](diagrams/unit-testing-boundaries.md).
 
-The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves; Chapter 18 tests meaningful behavior without unrelated infrastructure.
+[Chapter 19: Integration Testing Across Harbor Boundaries](chapters/19-integration-testing.md) makes selected collaborations real across HTTP, SQLite, REST/JSON, SOAP/XML, adapters, and frontend runtime contracts while deterministic transports keep live vendors outside the suite. See the [integration testing boundaries diagram](diagrams/integration-testing-boundaries.md).
+
+The progression is deliberate: Chapter 16 validates what enters; Chapter 17 minimizes what flows and controls what leaves; Chapter 18 isolates meaningful behavior; Chapter 19 verifies that selected real components agree.
 
 ## Requirements and installation
 
@@ -217,13 +219,22 @@ composer test:unit
 ./bin/digital-banking-lab test-determinism
 ```
 
+Run Chapter 19's focused integration suite, deterministic inventory and laboratory network-configuration guard, or the transparent combined verification script:
+
+```bash
+composer test:integration
+./bin/digital-banking-lab integration-test-inventory
+./bin/digital-banking-lab integration-network-check
+./bin/verify
+```
+
 ## Testing strategy
 
-- **Unit:** domain, application orchestration, adapter semantics, presenters, and frontend parsers/reducers/validators at meaningful boundaries.
-- **Integration:** real collaboration across local HTTP, SQL, REST transport, or SOAP transport boundaries.
-- **End-to-end:** a small number of complete user/system journeys.
+- **Unit:** fast, isolated domain and application behavior with focused frontend parsers, reducers, and validators.
+- **Integration:** real local collaboration across deliberately selected HTTP, SQL, REST/JSON, SOAP/XML, adapter, and contract boundaries.
+- **End-to-end:** a small number of complete member or employee journeys later in the book.
 
-Chapter 19 will focus on integration testing across Harbor APIs, SQL, REST clients, SOAP clients, and frontend/backend boundaries; it is not implemented here.
+Chapter 20 will focus on debugging the full stack from browser symptoms through Harbor APIs, application services, adapters, vendors, and SQL. It is not implemented here.
 
 ## Member Web
 

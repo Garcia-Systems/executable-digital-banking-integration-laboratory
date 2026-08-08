@@ -33,6 +33,20 @@ use Harbor\DigitalBankingLab\Application\{ActivityPolicy,FindMembersForActivityR
 
 $command = $argv[1] ?? null;
 
+if ($command === 'integration-test-inventory') {
+    echo "Harbor Integration Test Inventory\n\nHTTP\n- GET member summary\n- GET financial overview\n- GET verification\n- POST transfer preview\n\nDatabase\n- member/account fixture loading\n- activity projection\n- inactive member query\n\nNorthstar\n- REST JSON → Northstar model → Harbor Member\n\nHeritage\n- SOAP XML → Heritage model → Harbor AccountBalanceDetails\n\nClearVerify\n- REST JSON → verification adapter → Harbor status\n\nComposition\n- Harbor application wiring\n";
+    exit(0);
+}
+if ($command === 'integration-network-check') {
+    $checks = [
+        'Northstar uses deterministic transport' => str_contains((string) file_get_contents(dirname(__DIR__).'/src/Composition/IntegrationTestApplicationFactory.php'), 'DeterministicHttpClient'),
+        'Heritage uses deterministic SOAP transport' => str_contains((string) file_get_contents(dirname(__DIR__).'/src/Composition/IntegrationTestApplicationFactory.php'), 'DeterministicHeritageSoapTransport'),
+        'ClearVerify uses deterministic transport' => str_contains((string) file_get_contents(dirname(__DIR__).'/src/Composition/IntegrationTestApplicationFactory.php'), 'DeterministicClearVerifyHttpClient'),
+        'No live vendor endpoint configured for test environment' => !preg_match('#https://(?![a-z-]+\.invalid)#', (string) file_get_contents(dirname(__DIR__).'/src/Composition/IntegrationTestApplicationFactory.php')),
+    ];
+    $pass=!in_array(false,$checks,true);echo "Integration Network Check\n\n";foreach($checks as $label=>$ok)echo '['.($ok?'PASS':'FAIL')."] {$label}\n";echo "\nResult: ".($pass?'PASS':'FAIL')."\n\nThis validates laboratory test configuration; it is not a process-wide network sandbox.\n";exit($pass?0:1);
+}
+
 if ($command === 'test-inventory') {
     echo "Harbor Test Inventory\n\nDomain units\n- Money\n- MemberId\n- AccountId\n- ActivityPolicy\n\nApplication units\n- GetMemberSummary\n- GetMemberFinancialOverview\n- PreviewTransfer\n- GetMemberVerification\n\nAdapter units\n- NorthstarDigitalBankingAdapter\n- HeritageCoreBankingAdapter\n- ClearVerifyMemberVerificationAdapter\n\nPresentation units\n- API presenters\n\nFrontend units\n- USD amount parser\n- request reducer/coordinator\n- API DTO validation\n- transfer form validation\n\nIntegration-style tests\n- Harbor HTTP API\n- SQL repositories\n- REST transport client\n- SOAP transport client\n";
     exit(0);
